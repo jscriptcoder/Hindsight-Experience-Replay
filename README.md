@@ -1,2 +1,3 @@
-# Hindsight-Experience-Replay
-Hindsight Experience Replay algorithm research
+# Hindsight Experience Replay
+
+Research in progress...
