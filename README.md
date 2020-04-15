@@ -16,6 +16,7 @@ Research in progress...
 
 1. [Hindsight Experience Replay | Two Minute Papers #192](https://www.youtube.com/watch?v=Dvd1jQe3pq0)
 2. [Overcoming sparse rewards in Deep RL: Curiosity, hindsight & auxiliary tasks](https://www.youtube.com/watch?v=0Ey02HT_1Ho)
+3. [Hindsight Experience Replay](https://www.youtube.com/watch?v=Dz_HuzgMxzo)
 
 ## Repos
 
