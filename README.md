@@ -11,3 +11,5 @@ Research in progress...
 ## Videos
 
 ## Repos
+
+1. [2D Gridworld navigation using RL with Hindsight Experience Replay](https://github.com/orrivlin/Navigation-HER)
