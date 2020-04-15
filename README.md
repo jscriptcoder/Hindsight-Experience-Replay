@@ -22,3 +22,4 @@ Research in progress...
 
 1. [2D Gridworld navigation using RL with Hindsight Experience Replay](https://github.com/orrivlin/Navigation-HER)
 2. [Pytorch implementation of Hindsight Experience Replay (HER)](https://github.com/TianhongDai/hindsight-experience-replay)
+3. [Reproducing results from the Hindsight Experience Replay paper in PyTorch](https://github.com/viraat/hindsight-experience-replay)
