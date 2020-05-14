@@ -1,9 +1,8 @@
-import torch.nn.functional as F
+from torch.nn import ReLU
 from torch.optim import Adam
 
-class Config:
+class Config():
     seed = 0
-    num_agents = 2
     env = None
 
     # When we reach env_solved avarage score (our target score for this environment),
@@ -17,6 +16,10 @@ class Config:
     num_episodes = 2000
     num_updates = 2 # how many updates we want to perform in one learning step
     max_steps = 2000 # max steps done per episode if done is never True
+    
+    # Reward after reaching `max_steps` (punishment, hence negative reward)
+    max_steps_reward = -50
+    
     state_size = None
     action_size = None
     gamma = 0.99 # discount factor
@@ -25,8 +28,8 @@ class Config:
     lr_critic = 3e-4
     hidden_actor = (64, 64)
     hidden_critic = (64, 64)
-    activ_actor = F.relu
-    activ_critic = F.relu
+    activ_actor = ReLU()
+    activ_critic = ReLU()
     optim_actor = Adam
     optim_critic = Adam
     grad_clip_actor = None # gradient clipping for actor network

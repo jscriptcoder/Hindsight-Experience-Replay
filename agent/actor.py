@@ -12,12 +12,15 @@ class Actor(BaseNetwork):
         self.build_layers(dims)
 
         self.reset_parameters()
+        
+        self.to(device)
 
     def forward(self, state):
         """Maps state => actions, μ(s) => actions"""
+        
         if type(state) != torch.Tensor:
             state = torch.FloatTensor(state).to(device)
-
+        
         x = self.layers[0](state)
 
         for layer in self.layers[1:-1]:

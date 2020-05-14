@@ -2,7 +2,9 @@ import gym
 import gym.spaces
 import rocket_lander_gym
 
-env = gym.make("RocketLander-v0") # RocketLander-v0 | LunarLander-v2 | MountainCar-v0 | CartPole-v0
+# RocketLander-v0 | LunarLander-v2 | MountainCar-v0 | CartPole-v0
+# FetchPickAndPlace-v1 | FetchPush-v1 | FetchReach-v1
+env = gym.make("RocketLander-v0")
 env.reset()
 step = 0
 

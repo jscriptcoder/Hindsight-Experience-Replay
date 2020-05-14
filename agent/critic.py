@@ -12,6 +12,8 @@ class Critic(BaseNetwork):
         self.build_layers(dims)
 
         self.reset_parameters()
+        
+        self.to(device)
 
     def forward(self, state, action):
         """Maps state and action => Q-values, Q(s,a) => Q-values"""

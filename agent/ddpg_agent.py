@@ -1,5 +1,4 @@
 import time
-import random
 import numpy as np
 from collections import deque
 
@@ -7,6 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 
+from .replay_buffer import ReplayBuffer
 from .actor import Actor
 from .critic import Critic
 from .noise import OUNoise, GaussianNoise
@@ -24,7 +24,7 @@ class DDPGAgent():
 
     def __init__(self, config):
         self.config = config
-
+                
         # Actor Network (w/ Target Network)
         self.actor_local = Actor(config.state_size,
                                  config.action_size,
@@ -56,6 +56,8 @@ class DDPGAgent():
 
         self.critic_optim = config.optim_critic(self.critic_local.parameters(),
                                                 lr=config.lr_critic)
+        
+        self.memory = ReplayBuffer(config.buffer_size, config.batch_size)
 
         # Noise process
         if config.use_ou_noise:
@@ -69,6 +71,9 @@ class DDPGAgent():
         self.noise_weight = config.noise_weight
         self.t_step = 0
         self.p_update = 0
+        
+        self.actor_losses = []
+        self.critic_losses = []
 
     def act(self, state, add_noise=True):
         decay_noise = self.config.decay_noise
@@ -95,6 +100,8 @@ class DDPGAgent():
         return np.clip(action, -1., 1.)
 
     def reset(self):
+        self.actor_losses = []
+        self.critic_losses = []
         self.noise.reset()
         return self.config.env.reset()
 
@@ -123,37 +130,6 @@ class DDPGAgent():
                     experiences = self.memory.sample()
                     self.learn(experiences)
 
-    def learn(self, experiences):
-
-        policy_freq_update = self.config.policy_freq_update
-        batch_size = self.config.batch_size
-
-        (states,
-         actions,
-         rewards,
-         next_states,
-         dones) = from_experience(experiences)
-
-        # ---------------------------- update critic ---------------------------- #
-        # Get predicted next-state actions and Q values from target models
-        next_actions = self.actor_target(next_states)
-
-        self.update_critic(states.view(batch_size, -1),
-                           actions.view(batch_size, -1),
-                           next_states.view(batch_size, -1),
-                           next_actions,
-                           rewards.view(-1, 1),
-                           dones.view(-1, 1))
-
-        self.p_update = (self.p_update + 1) % policy_freq_update
-
-        if self.p_update == 0:
-            # ---------------------------- update actor ---------------------------- #
-            pred_actions = self.actor_local(states)
-
-            self.update_actor(states.view(batch_size, -1),
-                              pred_actions)
-
     def update_critic(self,
                       states,
                       actions,
@@ -167,22 +143,14 @@ class DDPGAgent():
         gamma = self.config.gamma
         tau = self.config.tau
 
-        # next_states => tensor(batch_size, 48)
-        # next_actions => tensorbatch_size, 4)
-        # Q_targets_next => tensor(batch_size, 1)
         Q_targets_next = \
             self.critic_target(next_states, next_actions).detach()
 
         # Compute Q targets for current states
-        # tensor(batch_size, 1)
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
 
-        # states => tensor(batch_size, 48)
-        # actions => tensorbatch_size, 4)
-        # Q_expected => tensor(batch_size 1)
-        Q_expected = self.critic_local(states, actions)
-
         # Compute critic loss
+        Q_expected = self.critic_local(states, actions)
         if use_huber_loss:
             critic_loss = F.smooth_l1_loss(Q_expected, Q_targets)
         else:
@@ -199,6 +167,8 @@ class DDPGAgent():
         self.critic_optim.step()
 
         soft_update(self.critic_local, self.critic_target, tau)
+        
+        self.critic_losses.append(critic_loss.item())
 
     def update_actor(self, states, pred_actions):
         grad_clip_actor = self.config.grad_clip_actor
@@ -217,10 +187,43 @@ class DDPGAgent():
         self.actor_optim.step()
 
         soft_update(self.actor_local, self.actor_target, tau)
+        
+        self.actor_losses.append(actor_loss.item())
+
+    def learn(self, experiences):
+
+        policy_freq_update = self.config.policy_freq_update
+        batch_size = self.config.batch_size
+
+        (states,
+         actions,
+         rewards,
+         next_states,
+         dones) = from_experience(experiences)
+
+        # ---------------------------- update critic ---------------------------- #
+        # Get predicted next-state actions and Q values from target models
+        next_actions = self.actor_target(next_states)
+
+        self.update_critic(states,
+                           actions,
+                           next_states,
+                           next_actions,
+                           rewards,
+                           dones)
+
+        self.p_update = (self.p_update + 1) % policy_freq_update
+
+        if self.p_update == 0:
+            # ---------------------------- update actor ---------------------------- #
+            pred_actions = self.actor_local(states)
+            
+            self.update_actor(states, pred_actions)
 
     def train(self):
         num_episodes = self.config.num_episodes
         max_steps = self.config.max_steps
+        max_steps_reward = self.config.max_steps_reward
         log_every = self.config.log_every
         env_solved = self.config.env_solved
         times_solved = self.config.times_solved
@@ -231,32 +234,43 @@ class DDPGAgent():
         scores_window = deque(maxlen=times_solved)
         best_score = -np.inf
         scores = []
+        actor_losses = []
+        critic_losses = []
 
         for i_episode in range(1, num_episodes+1):
             state = self.reset()
             score = 0
 
-            for _ in range(max_steps):
+            for time_step in range(max_steps):
                 action = self.act(state)
                 next_state, reward, done, _ = env.step(action)
 
                 self.step(state, action, reward, next_state, done)
+                
+                if not done and time_step == max_steps-1:
+                    # We reached max_steps
+                    done = True
+                    
+                    # Do we penalized?
+                    reward = max_steps_reward if max_steps_reward is not None else reward
 
                 state = next_state
                 score += reward
-
+                
                 if done: break
 
             scores.append(score)
             scores_window.append(score)
             avg_score = np.mean(scores_window)
+            avg_actor_loss = np.mean(self.actor_losses)
+            avg_critic_loss = np.mean(self.critic_losses)
 
-            print('\rEpisode {}\tAvg Score: {:.3f}'
-                  .format(i_episode, avg_score), end='')
+            print('\rEpisode {}\tAvg Score: {:.2f}\tAvg Actor Loss: {:.2f}\tAvg Critic Loss: {:.2f}'
+                  .format(i_episode, avg_score, avg_actor_loss, avg_critic_loss), end='')
 
             if i_episode % log_every == 0:
-                print('\rEpisode {}\tAvg Score: {:.3f}'
-                      .format(i_episode, avg_score))
+                print('\rEpisode {}\tAvg Score: {:.2f}\tAvg Actor Loss: {:.2f}\tAvg Critic Loss: {:.2f}'
+                      .format(i_episode, avg_score, avg_actor_loss, avg_critic_loss))
 
             if avg_score > best_score:
                 best_score = avg_score
@@ -301,7 +315,7 @@ class DDPGAgent():
         for _ in range(times_solved):
             state = env.reset()
             while True:
-                actions = self.act(state, train=False)
+                actions = self.act(state, add_noise=False)
                 state, reward, done, _ = env.step(actions)
 
                 total_reward += reward

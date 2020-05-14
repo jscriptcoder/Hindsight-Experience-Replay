@@ -27,6 +27,8 @@ class GaussianPolicy(BaseNetwork):
         
         self.reset_parameters()
         
+        self.to(device)
+        
     def reset_parameters(self):
         super().reset_parameters()
         self.log_std.weight.data.uniform_(-3e-3, 3e-3)

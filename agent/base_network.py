@@ -8,7 +8,6 @@ class BaseNetwork(nn.Module):
         super().__init__()
         
         self.activ = activ
-        self.to(device)
     
     def build_layers(self, dims):
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) \

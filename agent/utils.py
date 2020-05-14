@@ -1,10 +1,22 @@
 import time
 import datetime
+import random
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from collections import namedtuple
 from .device import device
+
+def seed_all(seed, env=None):
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    torch.manual_seed(seed)
+    if (torch.cuda.is_available()):
+        torch.cuda.manual_seed(seed)
+    
+    if env is not None and 'seed' in dir(env):
+        env.seed(seed)
 
 def hidden_init(layer):
     """Will return a tuple with the range for the initialization
