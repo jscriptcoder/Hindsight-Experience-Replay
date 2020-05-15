@@ -141,7 +141,6 @@ class DDPGAgent():
         grad_clip_critic = self.config.grad_clip_critic
         use_huber_loss = self.config.use_huber_loss
         gamma = self.config.gamma
-        tau = self.config.tau
 
         Q_targets_next = \
             self.critic_target(next_states, next_actions).detach()
@@ -156,6 +155,8 @@ class DDPGAgent():
         else:
             critic_loss = F.mse_loss(Q_expected, Q_targets)
 
+        self.critic_losses.append(critic_loss.item())
+
         # Minimize the loss
         self.critic_optim.zero_grad()
         critic_loss.backward()
@@ -166,15 +167,13 @@ class DDPGAgent():
 
         self.critic_optim.step()
 
-        soft_update(self.critic_local, self.critic_target, tau)
-        
-        self.critic_losses.append(critic_loss.item())
-
     def update_actor(self, states, pred_actions):
         grad_clip_actor = self.config.grad_clip_actor
         tau = self.config.tau
 
         actor_loss = -self.critic_local(states, pred_actions).mean()
+
+        self.actor_losses.append(actor_loss.item())
 
         # Minimize the loss
         self.actor_optim.zero_grad()
@@ -186,9 +185,10 @@ class DDPGAgent():
 
         self.actor_optim.step()
 
+    def update_target_networks(self):
+        tau = self.config.tau
+        soft_update(self.critic_local, self.critic_target, tau)
         soft_update(self.actor_local, self.actor_target, tau)
-        
-        self.actor_losses.append(actor_loss.item())
 
     def learn(self, experiences):
 
@@ -219,6 +219,8 @@ class DDPGAgent():
             pred_actions = self.actor_local(states)
             
             self.update_actor(states, pred_actions)
+
+            self.update_target_networks()
 
     def train(self):
         num_episodes = self.config.num_episodes
@@ -264,13 +266,13 @@ class DDPGAgent():
             avg_score = np.mean(scores_window)
             avg_actor_loss = np.mean(self.actor_losses)
             avg_critic_loss = np.mean(self.critic_losses)
+            
+            to_print = '\rEpisode {}\tAvg Score: {:5.2f}\tAvg Actor Loss: {:5.2f}\tAvg Critic Loss: {:5.2f}'\
+                .format(i_episode, avg_score, avg_actor_loss, avg_critic_loss)
 
-            print('\rEpisode {}\tAvg Score: {:.2f}\tAvg Actor Loss: {:.2f}\tAvg Critic Loss: {:.2f}'
-                  .format(i_episode, avg_score, avg_actor_loss, avg_critic_loss), end='')
+            print(to_print, end='')
 
-            if i_episode % log_every == 0:
-                print('\rEpisode {}\tAvg Score: {:.2f}\tAvg Actor Loss: {:.2f}\tAvg Critic Loss: {:.2f}'
-                      .format(i_episode, avg_score, avg_actor_loss, avg_critic_loss))
+            if i_episode % log_every == 0: print(to_print)
 
             if avg_score > best_score:
                 best_score = avg_score

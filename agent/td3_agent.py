@@ -101,6 +101,12 @@ class TD3Agent(DDPGAgent):
         
         self.critic_losses.append(torch.max(critic_loss, twin_loss).item())
 
+    def update_target_networks(self):
+        tau = self.config.tau
+        soft_update(self.critic_local, self.critic_target, tau)
+        soft_update(self.twin_local, self.twin_target, tau)
+        soft_update(self.actor_local, self.actor_target, tau)
+
     def summary(self, agent_name='TD3 Agent'):
         super().summary(agent_name)
         print('')
