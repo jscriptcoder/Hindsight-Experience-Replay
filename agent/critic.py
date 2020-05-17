@@ -1,4 +1,6 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from .device import device
 from .base_network import BaseNetwork
@@ -23,7 +25,7 @@ class Critic(BaseNetwork):
         if type(action) != torch.Tensor:
             action = torch.FloatTensor(action).to(device)
 
-        x = torch.cat((state, action), dim=1)
+        x = torch.cat([state, action], dim=1)
 
         for layer in self.layers[:-1]:
             x = self.activ(layer(x))

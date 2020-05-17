@@ -1,4 +1,6 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from .device import device
 from .base_network import BaseNetwork

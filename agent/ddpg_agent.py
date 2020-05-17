@@ -54,8 +54,9 @@ class DDPGAgent():
 
         soft_update(self.critic_local, self.critic_target, 1.0)
 
-        self.critic_optim = config.optim_critic(self.critic_local.parameters(),
-                                                lr=config.lr_critic)
+        self.critic_optim = config.optim_critic(self.critic_local.parameters(), 
+                                                lr=config.lr_critic, 
+                                                weight_decay=config.critic_weight_decay)
         
         self.memory = ReplayBuffer(config.buffer_size, config.batch_size)
 
@@ -80,6 +81,7 @@ class DDPGAgent():
         use_linear_decay = self.config.use_linear_decay
         noise_linear_decay = self.config.noise_linear_decay
         noise_decay = self.config.noise_decay
+        noise_weight_min = self.config.noise_weight_min
 
         self.actor_local.eval()
         with torch.no_grad():
@@ -91,10 +93,10 @@ class DDPGAgent():
 
             if decay_noise:
                 if use_linear_decay:
-                    self.noise_weight = max(0.1,
+                    self.noise_weight = max(noise_weight_min,
                                             self.noise_weight - noise_linear_decay)
                 else:
-                    self.noise_weight = max(0.1,
+                    self.noise_weight = max(noise_weight_min,
                                             self.noise_weight * noise_decay)
 
         return np.clip(action, -1., 1.)
