@@ -36,7 +36,7 @@ class DDPGAgent():
                                   config.hidden_actor,
                                   config.activ_actor)
 
-        soft_update(self.actor_local, self.actor_target, 1.0)
+        self.actor_target.load_state_dict(self.actor_local.state_dict())
 
         self.actor_optim = config.optim_actor(self.actor_local.parameters(),
                                               lr=config.lr_actor)
@@ -52,7 +52,7 @@ class DDPGAgent():
                                     config.hidden_critic,
                                     config.activ_critic)
 
-        soft_update(self.critic_local, self.critic_target, 1.0)
+        self.critic_target.load_state_dict(self.critic_local.state_dict())
 
         self.critic_optim = config.optim_critic(self.critic_local.parameters(), 
                                                 lr=config.lr_critic, 
@@ -67,7 +67,8 @@ class DDPGAgent():
                                  config.ou_theta,
                                  config.ou_sigma)
         else:
-            self.noise = GaussianNoise(config.action_size, config.expl_noise)
+            self.noise = GaussianNoise(config.action_size, 
+                                       config.explore_noise)
 
         self.noise_weight = config.noise_weight
         self.t_step = 0
@@ -269,8 +270,8 @@ class DDPGAgent():
             avg_actor_loss = np.mean(self.actor_losses)
             avg_critic_loss = np.mean(self.critic_losses)
             
-            to_print = '\rEpisode {}\tAvg Score: {:5.2f}\tAvg Actor Loss: {:5.2f}\tAvg Critic Loss: {:5.2f}'\
-                .format(i_episode, avg_score, avg_actor_loss, avg_critic_loss)
+            to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}\tAvg Actor Loss: {:5.2f}\tAvg Critic Loss: {:5.2f}'\
+                        .format(i_episode, score, avg_score, avg_actor_loss, avg_critic_loss)
 
             print(to_print, end='')
 

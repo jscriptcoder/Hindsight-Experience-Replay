@@ -23,9 +23,8 @@ class Actor(BaseNetwork):
         if type(state) != torch.Tensor:
             state = torch.FloatTensor(state).to(device)
         
-        x = self.layers[0](state)
-
-        for layer in self.layers[1:-1]:
+        x = state
+        for layer in self.layers[:-1]:
             x = self.activ(layer(x))
 
         # We squash the value between -1 and 1 (range of the actions)
