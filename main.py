@@ -10,7 +10,7 @@ from agent.utils import seed_all, plot_scores
 
 warnings.filterwarnings('ignore')
 
-# RocketLander-v0 | LunarLanderContinuous-v2
+# RocketLander-v0 | LunarLanderContinuous-v2 | 
 env = gym.make('LunarLanderContinuous-v2')
 
 config = Config()
@@ -19,10 +19,10 @@ config.env = env
 config.env_solved = 200
 config.buffer_size = int(1e6)
 config.batch_size = 64
-config.num_episodes = 2000
+config.num_episodes = 10000
 config.num_updates = 2
 config.max_steps = 2000
-config.max_steps = 500
+config.max_steps = 200
 config.policy_freq_update = 1
 config.lr_actor = 1e-4
 config.lr_critic = 1e-3
