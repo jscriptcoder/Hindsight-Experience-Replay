@@ -4,8 +4,8 @@ import gym.spaces
 import rocket_lander_gym
 import warnings
 from agent.config import Config
-from agent.ddpg_agent import DDPGAgent
-# from agent.td3_agent import TD3Agent
+# from agent.ddpg_agent import DDPGAgent
+from agent.td3_agent import TD3Agent
 from agent.utils import seed_all, plot_scores
 
 warnings.filterwarnings('ignore')
@@ -22,7 +22,9 @@ config.batch_size = 64
 config.num_episodes = 2000
 config.num_updates = 1
 config.max_steps = 2000
-config.policy_freq_update = 1
+config.policy_noise = 0.2
+config.noise_clip = 0.5
+config.policy_freq_update = 2
 config.lr_actor = 1e-4
 config.lr_critic = 1e-3
 config.hidden_actor = (400, 300)
@@ -32,8 +34,8 @@ config.action_size = env.action_space.shape[0]
 
 seed_all(config.seed, env)
 
-agent = DDPGAgent(config)
-# agent = TD3Agent(config)
+# agent = DDPGAgent(config)
+agent = TD3Agent(config)
 
 agent.summary()
 

@@ -30,10 +30,11 @@ class TD3Agent(DDPGAgent):
                                   config.hidden_critic,
                                   config.activ_critic)
 
-        soft_update(self.twin_local, self.twin_target, 1.0)
+        self.twin_target.load_state_dict(self.twin_local.state_dict())
 
         self.twin_optim = config.optim_critic(self.twin_local.parameters(),
-                                              lr=config.lr_critic)
+                                              lr=config.lr_critic, 
+                                              weight_decay=config.critic_weight_decay)
 
     def update_critic(self,
                       states,
@@ -60,6 +61,7 @@ class TD3Agent(DDPGAgent):
 
         Q_targets_next1 = \
             self.critic_target(next_states, next_actions)
+        
         Q_targets_next2 = \
             self.twin_target(next_states, next_actions)
 
@@ -78,6 +80,8 @@ class TD3Agent(DDPGAgent):
         else:
             critic_loss = F.mse_loss(Q_expected1, Q_targets)
             twin_loss = F.mse_loss(Q_expected2, Q_targets)
+        
+        self.critic_losses.append(torch.max(critic_loss, twin_loss).item())
 
         # Minimize the loss
         self.critic_optim.zero_grad()
@@ -95,11 +99,6 @@ class TD3Agent(DDPGAgent):
             clip_grad_norm_(self.twin_local.parameters(), grad_clip_critic)
 
         self.twin_optim.step()
-
-        soft_update(self.critic_local, self.critic_target, tau)
-        soft_update(self.twin_local, self.twin_target, tau)
-        
-        self.critic_losses.append(torch.max(critic_loss, twin_loss).item())
 
     def update_target_networks(self):
         tau = self.config.tau
