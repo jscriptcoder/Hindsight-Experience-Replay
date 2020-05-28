@@ -81,7 +81,7 @@ class TD3Agent(DDPGAgent):
             critic_loss = F.mse_loss(Q_expected1, Q_targets)
             twin_loss = F.mse_loss(Q_expected2, Q_targets)
         
-        self.critic_losses.append(torch.max(critic_loss, twin_loss).item())
+        self.value_losses.append(torch.max(critic_loss, twin_loss).item())
 
         # Minimize the loss
         self.critic_optim.zero_grad()
