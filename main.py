@@ -3,8 +3,10 @@ import gym
 import gym.spaces
 import rocket_lander_gym
 import warnings
+import numpy as np
+from hyperopt import hp, fmin, tpe
 from agent.config import Config
-# from agent.ddpg_agent import DDPGAgent
+from agent.ddpg_agent import DDPGAgent
 from agent.td3_agent import TD3Agent
 from agent.utils import seed_all, plot_scores
 
@@ -16,15 +18,15 @@ env = gym.make('LunarLanderContinuous-v2')
 config = Config()
 
 config.env = env
+config.num_episodes = 10
 config.env_solved = 200
 config.buffer_size = int(1e6)
 config.batch_size = 64
-config.num_episodes = 2000
 config.num_updates = 1
 config.max_steps = 2000
 config.policy_noise = 0.2
 config.noise_clip = 0.5
-config.policy_freq_update = 2
+config.policy_freq_update = 1
 config.lr_actor = 1e-4
 config.lr_critic = 1e-3
 config.hidden_actor = (400, 300)
@@ -32,13 +34,24 @@ config.hidden_critic = (400, 300)
 config.state_size = env.observation_space.shape[0]
 config.action_size = env.action_space.shape[0]
 
-seed_all(config.seed, env)
-
 # agent = DDPGAgent(config)
-agent = TD3Agent(config)
+# agent = TD3Agent(config)
 
-agent.summary()
+# agent.summary()
 
-scores = agent.train()
+def objective(args):
+    seed_all(config.seed, env)
+    config.batch_size = args
+    agent = DDPGAgent(config)
+    scores = agent.train()
+    return -np.mean(scores)
 
-plot_scores(scores, polyfit_deg=6)
+space = hp.randint('batch_size', 16, 257)
+
+best = fmin(objective, space, algo=tpe.suggest, max_evals=100)
+
+print(best)
+
+# scores = agent.train()
+
+# plot_scores(scores, polyfit_deg=6)

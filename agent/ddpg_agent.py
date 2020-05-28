@@ -5,6 +5,7 @@ from collections import deque
 import torch
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
+from torch.utils.tensorboard import SummaryWriter
 
 from .replay_buffer import ReplayBuffer
 from .actor import Actor
@@ -172,7 +173,6 @@ class DDPGAgent():
 
     def update_actor(self, states, pred_actions):
         grad_clip_actor = self.config.grad_clip_actor
-        tau = self.config.tau
 
         actor_loss = -self.critic_local(states, pred_actions).mean()
 
@@ -194,9 +194,7 @@ class DDPGAgent():
         soft_update(self.actor_local, self.actor_target, tau)
 
     def learn(self, experiences):
-
         policy_freq_update = self.config.policy_freq_update
-        batch_size = self.config.batch_size
 
         (states,
          actions,
@@ -236,11 +234,10 @@ class DDPGAgent():
 
         start = time.time()
 
+        # writer = SummaryWriter()
         scores_window = deque(maxlen=times_solved)
         best_score = -np.inf
         scores = []
-        actor_losses = []
-        critic_losses = []
 
         for i_episode in range(1, num_episodes+1):
             state = self.reset()
