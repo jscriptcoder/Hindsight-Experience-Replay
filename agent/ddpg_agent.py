@@ -67,7 +67,7 @@ class DDPGAgent(Agent):
                                  config.ou_sigma)
         else:
             self.noise = GaussianNoise(config.action_size, 
-                                       config.explore_noise)
+                                       config.expl_noise)
 
         self.noise_weight = config.noise_weight
 

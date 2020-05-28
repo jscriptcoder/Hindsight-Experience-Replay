@@ -24,10 +24,10 @@ class Config():
     action_size = None
     gamma = 0.99 # discount factor
     tau = 1e-3 # interpolation param, used in polyak averaging (soft update)
-    lr_actor = 1e-4
+    lr_actor = 3e-4
     lr_critic = 3e-4
-    hidden_actor = (64, 64)
-    hidden_critic = (64, 64)
+    hidden_actor = (256, 256)
+    hidden_critic = (256, 256)
     activ_actor = ReLU()
     activ_critic = ReLU()
     optim_actor = Adam
@@ -57,5 +57,10 @@ class Config():
     policy_noise = 0.2 # target policy smoothing by adding noise to the target action
     noise_clip = 0.5 # clipping value for the noise added to the target action
     policy_freq_update = 2 # how many critic net updates before updating the actor
+
     log_std_min=-20 # min value of the log std calculated by the Gaussian policy
     log_std_max=2 # max value of the log std calculated by the Gaussian policy
+    alpha = 0.01
+    alpha_auto_tuning = True # when True, alpha is a learnable
+    optim_alpha = Adam # optimizer for alpha
+    lr_alpha = 3e-4 # learning rate for alpha

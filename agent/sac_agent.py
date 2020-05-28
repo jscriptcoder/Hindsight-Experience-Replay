@@ -30,13 +30,13 @@ class SACAgent(Agent):
         self.policy_optim = config.optim_actor(self.policy.parameters(),
                                                lr=config.lr_actor)
 
-        self.Q1_local = Critic(config.state_size * config.num_agents,
-                               config.action_size * config.num_agents,
+        self.Q1_local = Critic(config.state_size,
+                               config.action_size,
                                config.hidden_critic,
                                config.activ_critic)
 
-        self.Q1_target = Critic(config.state_size * config.num_agents,
-                                config.action_size * config.num_agents,
+        self.Q1_target = Critic(config.state_size,
+                                config.action_size,
                                 config.hidden_critic,
                                 config.activ_critic)
 
@@ -45,13 +45,13 @@ class SACAgent(Agent):
         self.Q1_optim = config.optim_critic(self.Q1_local.parameters(),
                                             lr=config.lr_critic)
 
-        self.Q2_local = Critic(config.state_size * config.num_agents,
-                               config.action_size * config.num_agents,
+        self.Q2_local = Critic(config.state_size,
+                               config.action_size,
                                config.hidden_critic,
                                config.activ_critic)
 
-        self.Q2_target = Critic(config.state_size * config.num_agents,
-                                config.action_size * config.num_agents,
+        self.Q2_target = Critic(config.state_size,
+                                config.action_size,
                                 config.hidden_critic,
                                 config.activ_critic)
 

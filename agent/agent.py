@@ -137,12 +137,12 @@ class Agent():
 
     def save_weights(self):
         torch.save(self.actor_local.state_dict(),
-                   '{}_policy_checkpoint.ph'.format(self.name))
+                   '{}_actor_checkpoint.ph'.format(self.name))
 
     def load_weights(self):
         self.actor_local.\
             load_state_dict(
-                torch.load('{}_policy_checkpoint.ph'.
+                torch.load('{}_actor_checkpoint.ph'.
                            format(self.name),
                            map_location='cpu'))
 
