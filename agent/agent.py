@@ -135,17 +135,6 @@ class Agent():
 
         return scores
 
-    def save_weights(self):
-        torch.save(self.actor_local.state_dict(),
-                   '{}_actor_checkpoint.ph'.format(self.name))
-
-    def load_weights(self):
-        self.actor_local.\
-            load_state_dict(
-                torch.load('{}_actor_checkpoint.ph'.
-                           format(self.name),
-                           map_location='cpu'))
-
     def eval_episode(self):
         times_solved = self.config.times_solved
         env = self.config.env

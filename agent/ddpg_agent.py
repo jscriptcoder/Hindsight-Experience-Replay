@@ -189,6 +189,17 @@ class DDPGAgent(Agent):
 
             self.update_target_networks()
 
+    def save_weights(self):
+        torch.save(self.actor_local.state_dict(),
+                   '{}_actor_checkpoint.ph'.format(self.name))
+
+    def load_weights(self):
+        self.actor_local.\
+            load_state_dict(
+                torch.load('{}_actor_checkpoint.ph'.
+                           format(self.name),
+                           map_location='cpu'))
+
     def summary(self, agent_name='DDGP Agent'):
         print('{}:'.format(agent_name))
         print('==========')
