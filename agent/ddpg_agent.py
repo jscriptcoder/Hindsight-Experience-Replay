@@ -73,6 +73,7 @@ class DDPGAgent(Agent):
 
     def act(self, state, train=True):
         decay_noise = self.config.decay_noise
+        action_limit = self.config.action_limit
         use_linear_decay = self.config.use_linear_decay
         noise_linear_decay = self.config.noise_linear_decay
         noise_decay = self.config.noise_decay
@@ -94,7 +95,7 @@ class DDPGAgent(Agent):
                     self.noise_weight = max(noise_weight_min,
                                             self.noise_weight * noise_decay)
 
-        return np.clip(action, -1., 1.)
+        return np.clip(action, -action_limit, action_limit)
 
     def reset(self):
         self.noise.reset()

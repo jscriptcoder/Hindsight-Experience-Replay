@@ -68,10 +68,9 @@ class GaussianPolicy(BaseNetwork):
         log_prob = Normal(mean, std).log_prob(x)
         
         # Enforcing action bound for continuous actions
-        # see Appendix C in papers
+        # see Appendix C in SAC paper
         log_prob -= torch.log(1 - action.pow(2) + eps)
         log_prob = log_prob.sum(1, keepdim=True)
-        
         
         return action, log_prob, torch.tanh(mean)
         

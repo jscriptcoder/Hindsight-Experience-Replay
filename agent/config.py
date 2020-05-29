@@ -22,6 +22,7 @@ class Config():
     
     state_size = None
     action_size = None
+    action_limit = 1. # range continuous action [-action_limit, +action_limit]
     gamma = 0.99 # discount factor
     tau = 1e-3 # interpolation param, used in polyak averaging (soft update)
     lr_actor = 3e-4

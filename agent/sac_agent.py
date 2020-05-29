@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from torch.distributions import Normal
+import numpy as np
 
 from .agent import Agent
 from .gaussian_policy import GaussianPolicy
@@ -70,6 +71,8 @@ class SACAgent(Agent):
             self.alpha = config.alpha
     
     def act(self, state, train=True):
+        action_limit = self.config.action_limit
+
         # Since there is only one state we're gonna insert a new dimension
         # so we make it as if it was batch_size=1
         state = torch.FloatTensor(state).unsqueeze(0).to(device)
@@ -81,7 +84,9 @@ class SACAgent(Agent):
 
         # We need to extract the action from position 0
         # because previously we inserted a new dimension
-        return action.detach().cpu().numpy()[0]
+        action = action.detach().cpu().numpy()[0]
+
+        return np.clip(action, -action_limit, action_limit)
 
     def update_Q(self,
                  states,
@@ -173,8 +178,6 @@ class SACAgent(Agent):
             self.alpha = self.log_alpha.detach().exp()
 
     def learn(self, experiences):
-        batch_size = self.config.batch_size
-        
         (states, 
          actions, 
          rewards, 
