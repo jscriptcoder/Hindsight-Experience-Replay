@@ -123,7 +123,6 @@ def scores2poly1d(scores, polyfit_deg):
     degs = np.polyfit(x, scores, polyfit_deg)
     return x, np.poly1d(degs)
 
-
 def plot_scores(scores,
                 title='Agents avg score',
                 figsize=(15, 6),

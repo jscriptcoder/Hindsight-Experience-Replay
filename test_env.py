@@ -1,19 +1,22 @@
 import gym
+import time
 import gym.spaces
 import rocket_lander_gym
-
-# RocketLander-v0 | LunarLander-v2 | MountainCar-v0 | CartPole-v0
-# FetchPickAndPlace-v1 | FetchPush-v1 | FetchReach-v1
-env = gym.make("RocketLander-v0")
-env.reset()
-step = 0
+from agent.her_env_wrapper import HerEnvWrapper
 
 PRINT_DEBUG_MSG = True
 
+# RocketLander-v0 | LunarLanderContinuous-v2 | MountainCar-v0 | CartPole-v0
+env = gym.make('LunarLanderContinuous-v2')
+env = HerEnvWrapper(env)
+env.reset()
+
+step = 0
 while True:
     env.render()
     action = env.action_space.sample()
     observation, reward, done, info = env.step(action)
+    
     step += 1
 
     if PRINT_DEBUG_MSG:
