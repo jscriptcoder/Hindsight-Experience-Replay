@@ -52,7 +52,15 @@ make_experience = namedtuple('Experience',
                                           'next_state',
                                           'done'])
 
-def from_experience(experiences):
+make_experience_with_goal = namedtuple('ExperienceWithGoal',
+                                       field_names=['state',
+                                                    'action',
+                                                    'reward',
+                                                    'next_state',
+                                                    'done', 
+                                                    'goal'])
+
+def from_experience(experiences, with_goal=False):
     """Returns a tuple with (s, a, r, s', d)
 
     Args:
@@ -80,8 +88,15 @@ def from_experience(experiences):
     dones = torch.from_numpy(
             np.vstack([e.done for e in experiences if e is not None])\
             .astype(np.uint8)).float().to(device)
-
-    return states, actions, rewards, next_states, dones
+    
+    if with_goal:
+        goals = torch.from_numpy(
+            np.vstack([e.goal for e in experiences if e is not None]))\
+            .float().to(device)
+        
+        return states, actions, rewards, next_states, dones, goals
+    else:
+        return states, actions, rewards, next_states, dones
 
 def run_env(env, get_action=None, max_t=1000, close_env=True):
     """Run actions against an environment.

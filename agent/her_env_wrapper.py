@@ -17,8 +17,17 @@ class HerEnvWrapper():
 
         # Strategy 1:
         #   accumulated reward if done else 0.0
-        self.acc_reward += reward
-        reward = self.acc_reward if done else 0.
+        # self.acc_reward += reward
+        # reward = self.acc_reward if done else 0.
+
+        # Strategy 2:
+        #   -1.0 if not done else last reward
+        # reward = -1. if not done else reward
+
+        # Strategy 3:
+        #   -1.0 if not done else
+        #       1.0 if success else -1.0
+        reward = -1. if not done else (1.0 if reward == 100 else -1.)
 
         return next_state, reward, done, info
     
