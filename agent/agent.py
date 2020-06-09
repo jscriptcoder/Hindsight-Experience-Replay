@@ -4,7 +4,7 @@ import torch
 from collections import deque
 
 from .replay_buffer import ReplayBuffer
-from .utils import make_experience, get_time_elapsed
+from .utils import make_experience, get_time_elapsed, reward_her
 
 class Agent():
     """Common logic"""
@@ -36,17 +36,10 @@ class Agent():
     def learn(self, experiences):
         pass
 
-    def step(self, state, action, reward, next_state, done):
+    def sample_and_learn(self):
         batch_size = self.config.batch_size
         update_every = self.config.update_every
         num_updates = self.config.num_updates
-
-        experience = make_experience(state,
-                                     action,
-                                     reward,
-                                     next_state,
-                                     done)
-        self.memory.add(experience)
 
         # Learn every update_every time steps.
         self.t_step = (self.t_step + 1) % update_every
@@ -60,6 +53,16 @@ class Agent():
                 for _ in range(num_updates):
                     experiences = self.memory.sample()
                     self.learn(experiences)
+
+    def step(self, state, action, reward, next_state, done):
+        experience = make_experience(state,
+                                     action,
+                                     reward,
+                                     next_state,
+                                     done)
+        self.memory.add(experience)
+
+        self.sample_and_learn()
 
     def train(self):
         num_episodes = self.config.num_episodes
@@ -134,6 +137,111 @@ class Agent():
         env.close()
 
         return scores
+
+    def train_her(self):
+        num_episodes = self.config.num_episodes
+        max_steps = self.config.max_steps
+        max_steps_reward = self.config.max_steps_reward
+        log_every = self.config.log_every
+        env_solved = self.config.env_solved
+        times_solved = self.config.times_solved
+        env = self.config.env
+
+        start = time.time()
+
+        # writer = SummaryWriter()
+        scores_window = deque(maxlen=times_solved)
+        best_score = -np.inf
+        scores = []
+
+        for i_episode in range(1, num_episodes+1):
+            # Sample a goal g and an initial state s0
+            state = self.reset()
+            score = 0
+            goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.]) # LunarLander goal
+
+            episode = []
+            additional_goal = None
+
+            for time_step in range(max_steps):
+                # Sample an action `at` using the behavioral policy
+                # at ← πb(st||g) 
+                action = self.act(np.concatenate((state, goal)))
+
+                # Execute the action `at` ...
+                next_state, reward, done, _ = env.step(action)
+
+                # ... and observe a new state st+1
+                episode.append((state, action, next_state, done))
+
+                state = next_state
+                score += reward
+
+                if done: 
+                    additional_goal = state # m(st)
+                    break
+
+            for state, action, next_state, done in episode:
+                # rt := r(st, at, g)
+                reward = reward_her(next_state, goal) # (st, at) => st+1
+
+                # Store the transition (st||g, at, rt, st+1||g) in R
+                transition = make_experience(np.concatenate((state, goal)),
+                                            action,
+                                            reward,
+                                            np.concatenate((next_state, goal)),
+                                            done)
+                self.memory.add(transition)
+                
+                # Sample a set of additional goals for replay G := S(current episode)
+                reward = reward_her(next_state, additional_goal)
+
+                # Store the transition (st||g', at, rt, st+1||g') in R
+                transition = make_experience(np.concatenate((state, additional_goal)),
+                                            action,
+                                            reward,
+                                            np.concatenate((next_state, additional_goal)),
+                                            reward == 0)
+                self.memory.add(transition)
+            
+            self.sample_and_learn()
+
+            scores.append(score)
+            scores_window.append(score)
+            avg_score = np.mean(scores_window)
+            avg_policy_loss = np.mean(self.policy_losses)
+            avg_value_loss = np.mean(self.value_losses)
+            
+            to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}\tAvg Policy Loss: {:5.2f}\tAvg Value Loss: {:5.2f}'\
+                        .format(i_episode, score, avg_score, avg_policy_loss, avg_value_loss)
+
+            print(to_print, end='')
+
+            if i_episode % log_every == 0: print(to_print)
+
+            if avg_score > best_score:
+                best_score = avg_score
+                self.save_weights()
+
+            if avg_score >= env_solved:
+                print('\nRunning evaluation...')
+
+                avg_score = self.eval_episode()
+
+                if avg_score >= env_solved:
+                    time_elapsed = get_time_elapsed(start)
+
+                    print('Environment solved {} times consecutively!'.format(times_solved))
+                    print('Avg score: {:.3f}'.format(avg_score))
+                    print('Time elapsed: {}'.format(time_elapsed))
+                    break
+                else:
+                    print('No success. Avg score: {:.3f}'.format(avg_score))
+
+        env.close()
+
+        return scores
+
 
     def eval_episode(self):
         times_solved = self.config.times_solved

@@ -2,13 +2,12 @@ import gym
 import time
 import gym.spaces
 import rocket_lander_gym
-from agent.her_env_wrapper import HerEnvWrapper
 
 PRINT_DEBUG_MSG = True
 
 # RocketLander-v0 | LunarLanderContinuous-v2 | MountainCar-v0 | CartPole-v0
 env = gym.make('LunarLanderContinuous-v2')
-env = HerEnvWrapper(env)
+# env = HerEnvWrapper(env)
 env.reset()
 
 step = 0
