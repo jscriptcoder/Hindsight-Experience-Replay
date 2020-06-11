@@ -201,7 +201,7 @@ class Agent():
                                             action,
                                             reward,
                                             np.concatenate((next_state, additional_goal)),
-                                            reward == 0)
+                                            done)
                 self.memory.add(transition)
             
             self.sample_and_learn()
