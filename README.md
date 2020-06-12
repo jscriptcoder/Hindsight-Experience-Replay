@@ -13,6 +13,7 @@ Research in progress...
 
 1. [Reinforcement Learning with Hindsight Experience Replay](https://towardsdatascience.com/reinforcement-learning-with-hindsight-experience-replay-1fee5704f2f8)
 2. [Learning from mistakes with Hindsight Experience Replay](https://becominghuman.ai/learning-from-mistakes-with-hindsight-experience-replay-547fce2b3305)
+3. [Understanding DQN+HER](https://deeprobotics.wordpress.com/2018/03/07/bitflipper-herdqn/)
 
 ## Videos
 
