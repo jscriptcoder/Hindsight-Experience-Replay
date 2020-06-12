@@ -1,10 +1,11 @@
 import time
+import random
 import numpy as np
 import torch
 from collections import deque
 
 from .replay_buffer import ReplayBuffer
-from .utils import make_experience, get_time_elapsed, reward_her
+from .utils import make_experience, get_time_elapsed, goal_conditioned_reward
 
 class Agent():
     """Common logic"""
@@ -161,53 +162,47 @@ class Agent():
             score = 0
 
             episode = []
-            additional_goal = None
+            additional_goals = []
 
             for time_step in range(max_steps):
-                # Sample an action `at` using the behavioral policy
-                # at ← πb(st||g) 
                 action = self.act(np.concatenate((state, goal)))
 
-                # Execute the action `at` ...
-                next_state, reward, done, _ = env.step(action)
+                next_state, original_reward, done, _ = env.step(action)
 
-                # ... and observe a new state st+1
                 episode.append((state, action, next_state, done))
 
-                state = next_state
-                score += reward
+                # Sparse reward
+                reward = goal_conditioned_reward(next_state, goal)
 
-                if done: 
-                    additional_goal = state # m(st)
-                    break
-
-            for state, action, next_state, done in episode:
-                # rt := r(st, at, g)
-                reward = reward_her(next_state, goal) # (st, at) => st+1
-
-                # Store the transition (st||g, at, rt, st+1||g) in R
                 transition = make_experience(np.concatenate((state, goal)),
                                             action,
                                             reward,
                                             np.concatenate((next_state, goal)),
                                             done)
                 self.memory.add(transition)
+
+                additional_goals.append(next_state)
+
+                state = next_state
+                score += original_reward
+
+                if done: break
+
+            for state, action, next_state, done in episode:
                 
-                # Sample a set of additional goals for replay G := S(current episode)
-                reward = reward_her(next_state, additional_goal)
-                done = True if reward == 0 else done
+                goals = random.sample(additional_goals, k=8)
 
-                # Store the transition (st||g', at, rt, st+1||g') in R
-                transition = make_experience(np.concatenate((state, additional_goal)),
-                                            action,
-                                            reward,
-                                            np.concatenate((next_state, additional_goal)),
-                                            done)
-                self.memory.add(transition)
+                for additional_goal in goals:
+                    reward = goal_conditioned_reward(next_state, additional_goal)
+                    done = True if reward == 0 else done
 
-            for _ in episode:
-                # Sample a minibatch B from the replay buffer R
-                # Perform one step of optimization using A and minibatch B
+                    transition = make_experience(np.concatenate((state, additional_goal)),
+                                                action,
+                                                reward,
+                                                np.concatenate((next_state, additional_goal)),
+                                                done)
+                    self.memory.add(transition)
+                
                 self.sample_and_learn()
 
             scores.append(score)

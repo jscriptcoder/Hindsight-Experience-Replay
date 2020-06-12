@@ -192,7 +192,7 @@ def play_game(agent, min_score):
     while score < min_score:
         score = agent.eval_episode()
 
-def reward_her(state, goal, eps = [0.01, 0., 0.01, 0.01, 0.01, 0.01, 0., 0.]):
+def goal_conditioned_reward(state, goal, eps = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0., 0.]):
     eps = np.array(eps)
 
     # r(s, a, g) = −[|g − s| > e]
