@@ -157,8 +157,8 @@ class Agent():
         for i_episode in range(1, num_episodes+1):
             # Sample a goal g and an initial state s0
             state = self.reset()
-            score = 0
             goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.]) # LunarLander goal
+            score = 0
 
             episode = []
             additional_goal = None
@@ -195,6 +195,7 @@ class Agent():
                 
                 # Sample a set of additional goals for replay G := S(current episode)
                 reward = reward_her(next_state, additional_goal)
+                done = True if reward == 0 else done
 
                 # Store the transition (st||g', at, rt, st+1||g') in R
                 transition = make_experience(np.concatenate((state, additional_goal)),
@@ -203,17 +204,23 @@ class Agent():
                                             np.concatenate((next_state, additional_goal)),
                                             done)
                 self.memory.add(transition)
-            
-            self.sample_and_learn()
+
+            for _ in episode:
+                # Sample a minibatch B from the replay buffer R
+                # Perform one step of optimization using A and minibatch B
+                self.sample_and_learn()
 
             scores.append(score)
             scores_window.append(score)
             avg_score = np.mean(scores_window)
-            avg_policy_loss = np.mean(self.policy_losses)
-            avg_value_loss = np.mean(self.value_losses)
+            # avg_policy_loss = np.mean(self.policy_losses)
+            # avg_value_loss = np.mean(self.value_losses)
             
-            to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}\tAvg Policy Loss: {:5.2f}\tAvg Value Loss: {:5.2f}'\
-                        .format(i_episode, score, avg_score, avg_policy_loss, avg_value_loss)
+            # to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}\tAvg Policy Loss: {:5.2f}\tAvg Value Loss: {:5.2f}'\
+            #             .format(i_episode, score, avg_score, avg_policy_loss, avg_value_loss)
+
+            to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}'\
+                        .format(i_episode, score, avg_score)
 
             print(to_print, end='')
 

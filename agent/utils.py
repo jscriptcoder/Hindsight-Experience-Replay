@@ -196,5 +196,5 @@ def reward_her(state, goal, eps = [0.01, 0., 0.01, 0.01, 0.01, 0.01, 0., 0.]):
     eps = np.array(eps)
 
     # r(s, a, g) = −[|g − s| > e]
-    reward = -int(np.any(np.abs(goal - state) > eps))
+    reward = -1 if np.any(np.abs(goal - state) > eps) else 0
     return reward

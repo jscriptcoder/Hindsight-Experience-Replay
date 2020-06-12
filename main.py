@@ -22,21 +22,23 @@ config.env = env
 config.num_episodes = 2000
 config.env_solved = 200
 config.buffer_size = int(1e6)
-config.batch_size = 256
+config.batch_size = 64
 config.num_updates = 1
 config.max_steps = 2000
 config.tau = 0.005
-config.lr_actor = 3e-4
-config.lr_critic = 3e-4
-config.lr_alpha = 1e-3
-config.hidden_actor = (256, 256)
-config.hidden_critic = (256, 256)
+config.gamma = 0.99
+config.lr_actor = 1e-4
+config.lr_critic = 1e-3
+config.critic_weight_decay = 1e-2
+# config.lr_alpha = 1e-3
+config.hidden_actor = (400, 300)
+config.hidden_critic = (400, 300)
 config.state_size = env.observation_space.shape[0]
 config.action_size = env.action_space.shape[0]
 
-# agent = DDPGAgent(config)
+agent = DDPGAgent(config)
 # agent = TD3Agent(config)
-agent = SACAgent(config)
+# agent = SACAgent(config)
 
 agent.summary()
 
