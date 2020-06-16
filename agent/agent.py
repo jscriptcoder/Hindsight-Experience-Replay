@@ -233,16 +233,12 @@ class Agent():
 
             print(to_print, end='')
 
-            if i_episode % log_every == 0: print(to_print)
+            if i_episode % log_every == 0: 
+                print(to_print)
 
-            if avg_score > best_score:
-                best_score = avg_score
-                self.save_weights()
-
-            if avg_score >= env_solved:
                 print('\nRunning evaluation...')
 
-                avg_score = self.eval_episode()
+                avg_score = self.eval_her_episode()
 
                 if avg_score >= env_solved:
                     time_elapsed = get_time_elapsed(start)
@@ -253,7 +249,7 @@ class Agent():
                     break
                 else:
                     print('No success. Avg score: {:.3f}'.format(avg_score))
-
+        
         env.close()
 
         return scores
@@ -269,6 +265,25 @@ class Agent():
             state = env.reset()
             while True:
                 actions = self.act(state, train=False)
+                state, reward, done, _ = env.step(actions)
+
+                total_reward += reward
+    
+                if done: break
+                
+        return total_reward / times_solved
+
+    def eval_her_episode(self):
+        times_solved = self.config.times_solved
+        env = self.config.env
+        
+        total_reward = 0
+        goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.]) # LunarLander goal
+        
+        for _ in range(times_solved):
+            state = env.reset()
+            while True:
+                actions = self.act(np.concatenate((state, goal)), train=False)
                 state, reward, done, _ = env.step(actions)
 
                 total_reward += reward
