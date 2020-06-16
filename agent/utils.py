@@ -194,8 +194,9 @@ def play_game(agent, min_score):
 
 def reward_strategy(state, goal, eps = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0., 0.]):
     eps = np.array(eps)
-    reward = -1. if np.any(np.abs(goal - state) > eps) else 0.
+    reward = 0. if np.any(np.abs(goal - state) > eps) else 100.
     return reward
 
-def sample_goals_strategy(achieved_goals, how_many=4):
+def sample_goals_strategy(achieved_goals, how_many=8):
     return random.sample(achieved_goals, k=how_many)
+    # return achieved_goals[-1:] # final state
