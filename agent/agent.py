@@ -5,7 +5,8 @@ import torch
 from collections import deque
 
 from .replay_buffer import ReplayBuffer
-from .utils import make_experience, get_time_elapsed, goal_conditioned_reward
+from .utils import make_experience, get_time_elapsed
+from .utils import reward_strategy, sample_goals_strategy
 
 class Agent():
     """Common logic"""
@@ -156,21 +157,27 @@ class Agent():
         scores = []
 
         for i_episode in range(1, num_episodes+1):
-            # Sample a goal g and an initial state s0
+            # Sample a goal g and an initial state s0.
             state = self.reset()
             goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.]) # LunarLander goal
+
             score = 0
 
             episode = []
-            additional_goals = []
+            achieved_goals = []
 
             for time_step in range(max_steps):
+                # Sample an action at using the behavioral policy from A:
+                # at ← πb(st||g)
                 action = self.act(np.concatenate((state, goal)))
 
+                # Execute the action at and...
                 next_state, original_reward, done, _ = env.step(action)
 
+                #  observe a new state st+1
                 episode.append((state, action, next_state, done))
-                additional_goals.append(next_state)
+
+                achieved_goals.append(next_state)
 
                 state = next_state
                 score += original_reward
@@ -179,9 +186,10 @@ class Agent():
 
             for state, action, next_state, done in episode:
                 
-                # Sparse reward
-                reward = goal_conditioned_reward(next_state, goal)
+                # rt := r(st, at, g)
+                reward = reward_strategy(next_state, goal) # (st, at) => st+1
 
+                # Store the transition (st||g, at, rt, st+1||g) in R
                 transition = make_experience(np.concatenate((state, goal)),
                                             action,
                                             reward,
@@ -189,32 +197,39 @@ class Agent():
                                             done)
                 self.memory.add(transition)
 
-                goals = random.sample(additional_goals, k=8)
+                # Sample a set of additional goals for replay G := S(current episode)
+                additional_goals = sample_goals_strategy(achieved_goals)
 
-                for additional_goal in goals:
-                    reward = goal_conditioned_reward(next_state, additional_goal)
-                    # done = True if reward == 1 else done
-
+                for additional_goal in additional_goals:
+                    # r' := r(st, at, g')
+                    reward = reward_strategy(next_state, additional_goal)
+                    
+                    # Store the transition (st||g', at, rt, st+1||g') in R
                     transition = make_experience(np.concatenate((state, additional_goal)),
                                                 action,
                                                 reward,
                                                 np.concatenate((next_state, additional_goal)),
                                                 done)
-                    self.memory.add(transition)
-                
-            self.sample_and_learn()
 
+                    self.memory.add(transition)
+            
+            # for t = 1, N do
+            # Sample a minibatch B from the replay buffer R
+            # Perform one step of optimization using A and minibatch B
+            self.sample_and_learn()
+            # end for
+            
             scores.append(score)
             scores_window.append(score)
             avg_score = np.mean(scores_window)
-            # avg_policy_loss = np.mean(self.policy_losses)
-            # avg_value_loss = np.mean(self.value_losses)
+            avg_policy_loss = np.mean(self.policy_losses)
+            avg_value_loss = np.mean(self.value_losses)
             
-            # to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}\tAvg Policy Loss: {:5.2f}\tAvg Value Loss: {:5.2f}'\
-            #             .format(i_episode, score, avg_score, avg_policy_loss, avg_value_loss)
+            to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}\tAvg Policy Loss: {:5.2f}\tAvg Value Loss: {:5.2f}'\
+                        .format(i_episode, score, avg_score, avg_policy_loss, avg_value_loss)
 
-            to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}'\
-                        .format(i_episode, score, avg_score)
+            # to_print = '\rEpisode {}\tScore: {:5.2f}\tAvg Score: {:5.2f}'\
+            #             .format(i_episode, score, avg_score)
 
             print(to_print, end='')
 

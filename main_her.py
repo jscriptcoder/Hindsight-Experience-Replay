@@ -19,11 +19,13 @@ env = gym.make('LunarLanderContinuous-v2')
 config = Config()
 
 config.env = env
-config.num_episodes = 5000
+config.num_episodes = 10000
 config.env_solved = 200
 config.buffer_size = int(1e6)
 config.batch_size = 64
-config.num_updates = 10
+config.num_updates = 40
+config.update_every = 1
+config.policy_freq_update = 1
 config.max_steps = 2000
 config.tau = 0.001
 config.gamma = 0.99
