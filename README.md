@@ -8,6 +8,7 @@ Research in progress...
 2. [DHER: Hindsight Experience Replay for Dynamic Goals](https://openreview.net/forum?id=Byf5-30qFX)
 3. [Hindsight policy gradients](https://arxiv.org/abs/1711.06006)
 4. [Rewriting History with Inverse RL: Hindsight Inference for Policy Improvement](https://arxiv.org/abs/2002.11089)
+5. [Advances in Experience Replay](https://arxiv.org/abs/1805.05536)
 
 ## Articles
 
