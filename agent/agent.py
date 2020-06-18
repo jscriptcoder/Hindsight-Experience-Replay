@@ -184,7 +184,7 @@ class Agent():
 
                 if done: break
 
-            for state, action, next_state, done in episode:
+            for i, (state, action, next_state, done) in enumerate(episode):
                 
                 # rt := r(st, at, g)
                 reward = reward_strategy(next_state, goal) # (st, at) => st+1
@@ -198,7 +198,7 @@ class Agent():
                 self.memory.add(transition)
 
                 # Sample a set of additional goals for replay G := S(current episode)
-                additional_goals = sample_goals_strategy(achieved_goals)
+                additional_goals = sample_goals_strategy(achieved_goals[i:]) # future strategy
 
                 for additional_goal in additional_goals:
                     # r' := r(st, at, g')
