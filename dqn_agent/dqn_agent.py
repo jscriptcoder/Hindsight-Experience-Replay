@@ -1,5 +1,6 @@
-import numpy as np
+import time
 import random
+import numpy as np
 
 import torch
 import torch.optim as optim
@@ -8,7 +9,7 @@ import torch.nn.functional as F
 from collections import deque
 from .model import QNetwork, DuelingQNetwork
 from common.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
-from common.utils import make_experience
+from common.utils import make_experience, get_time_elapsed
 from common.device import device
 
 
@@ -236,6 +237,8 @@ class DQNAgent:
     
     def train(self, 
               env, 
+              env_solved=4.9,
+              times_solved=100,
               n_episodes=1000, 
               avg_size_score=100, 
               eps_start=1.0, 
@@ -259,6 +262,8 @@ class DQNAgent:
         scores_window = deque(maxlen=avg_size_score) # last avg_size_score scores
         eps = eps_start # initialize epsilon
         best_mean_score = -np.inf
+
+        start = time.time()
         
         for i_episode in range(1, n_episodes+1):
             state = env.reset()
@@ -291,12 +296,42 @@ class DQNAgent:
                     print('\r* Best score so far: {}. Saving the weights\n'.format(mean_score))
                     best_mean_score = mean_score
                     self.save_weights() # let's save the best weights
+                
+                if mean_score >= env_solved:
+                    print('\nRunning evaluation...')
+
+                    mean_score = self.eval_episode(env, times_solved)
+
+                    if mean_score >= env_solved:
+                        time_elapsed = get_time_elapsed(start)
+
+                        print('Environment solved {} times consecutively!'.format(times_solved))
+                        print('Avg score: {:.3f}'.format(mean_score))
+                        print('Time elapsed: {}'.format(time_elapsed))
+                        break
+                    else:
+                        print('No success. Avg score: {:.3f}'.format(mean_score))
         
         if close_env:
             env.close()
         
         return scores
     
+    def eval_episode(self, env, times_solved):
+        total_reward = 0
+        
+        for _ in range(times_solved):
+            state = env.reset()
+            while True:
+                actions = self.act(state)
+                state, reward, done, _ = env.step(actions)
+
+                total_reward += reward
+    
+                if done: break
+                
+        return total_reward / times_solved
+
     def make_filename(self, filename):
         filename = 'noisy_' + filename if self.use_noise else filename
         filename = 'dueling_' + filename if self.use_dueling else filename
