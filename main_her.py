@@ -13,8 +13,8 @@ from agent.utils import seed_all, plot_scores
 
 warnings.filterwarnings('ignore')
 
-# RocketLander-v0 | LunarLanderContinuous-v2 | 
-env = gym.make('LunarLanderContinuous-v2')
+# RocketLander-v0 | LunarLanderContinuous-v2 | MountainCarContinuous-v0
+env = gym.make('RocketLander-v0')
 
 config = Config()
 
@@ -24,17 +24,17 @@ config.env_solved = 200
 config.times_solved = 1
 config.buffer_size = int(1e6)
 config.batch_size = 64
-config.num_updates = 10
+config.num_updates = 40
 config.update_every = 1
 config.policy_freq_update = 1
 config.max_steps = 2000
 config.tau = 0.001
 config.gamma = 0.99
-config.lr_actor = 1e-4
-config.lr_critic = 1e-3
+config.lr_actor = 1e-3
+config.lr_critic = 1e-4
 config.hidden_actor = (400, 300)
-config.hidden_critic = (400, 400)
-config.state_size = env.observation_space.shape[0]*2 # state + goal
+config.hidden_critic = (400, 300)
+config.state_size = env.observation_space.shape[0] + 2 # state + goal
 config.action_size = env.action_space.shape[0]
 
 agent = DDPGAgent(config)
