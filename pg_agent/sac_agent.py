@@ -7,8 +7,8 @@ import numpy as np
 from .agent import Agent
 from .gaussian_policy import GaussianPolicy
 from .critic import Critic
-from .utils import soft_update, make_experience, from_experience, get_time_elapsed
-from .device import device
+from common.utils import soft_update, make_experience, from_experience, get_time_elapsed
+from common.device import device
 
 class SACAgent(Agent):
     """Soft Actor-Critic

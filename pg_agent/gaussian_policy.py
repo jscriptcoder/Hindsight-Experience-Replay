@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 
-from .device import device
+from common.device import device
 from .base_network import BaseNetwork
 
 class GaussianPolicy(BaseNetwork):

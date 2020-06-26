@@ -4,9 +4,9 @@ import numpy as np
 import torch
 from collections import deque
 
-from .replay_buffer import ReplayBuffer
-from .utils import make_experience, get_time_elapsed
-from .utils import reward_strategy, sample_goals_strategy
+from common.replay_buffer import ReplayBuffer
+from common.utils import make_experience, get_time_elapsed
+from common.utils import reward_strategy, sample_goals_strategy
 
 class Agent():
     """Common logic"""

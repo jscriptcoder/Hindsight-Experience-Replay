@@ -11,8 +11,8 @@ from .agent import Agent
 from .actor import Actor
 from .critic import Critic
 from .noise import OUNoise, GaussianNoise
-from .utils import soft_update, make_experience, from_experience, get_time_elapsed
-from .device import device
+from common.utils import soft_update, make_experience, from_experience, get_time_elapsed
+from common.device import device
 
 
 class DDPGAgent(Agent):

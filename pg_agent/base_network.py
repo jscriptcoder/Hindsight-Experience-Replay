@@ -1,7 +1,7 @@
 import torch.nn as nn
 
-from .device import device
-from .utils import hidden_init
+from common.device import device
+from common.utils import hidden_init
 
 class BaseNetwork(nn.Module):
     def __init__(self, activ):
