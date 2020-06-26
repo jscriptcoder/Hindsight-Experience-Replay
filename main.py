@@ -1,15 +1,15 @@
 import torch
 import gym
 import gym.spaces
-import rocket_lander_gym
+import envs.rocket_lander_gym
 import warnings
 import numpy as np
 from hyperopt import hp, fmin, tpe
-from agent.config import Config
-from agent.ddpg_agent import DDPGAgent
-from agent.td3_agent import TD3Agent
-from agent.sac_agent import SACAgent
-from agent.utils import seed_all, plot_scores
+from common.config import Config
+from common.utils import seed_all, plot_scores
+from pg_agent.ddpg_agent import DDPGAgent
+from pg_agent.td3_agent import TD3Agent
+from pg_agent.sac_agent import SACAgent
 
 warnings.filterwarnings('ignore')
 
@@ -19,11 +19,13 @@ env = gym.make('LunarLanderContinuous-v2')
 config = Config()
 
 config.env = env
-config.num_episodes = 2000
+config.num_episodes = 5000
 config.env_solved = 200
 config.buffer_size = int(1e6)
 config.batch_size = 64
-config.num_updates = 1
+config.num_updates = 40
+config.update_every = 1
+config.policy_freq_update = 1
 config.max_steps = 2000
 config.tau = 0.005
 config.gamma = 0.99
@@ -33,7 +35,8 @@ config.critic_weight_decay = 1e-2
 # config.lr_alpha = 1e-3
 config.hidden_actor = (400, 300)
 config.hidden_critic = (400, 300)
-config.state_size = env.observation_space.shape[0]
+# config.state_size = env.observation_space.shape[0]
+config.state_size = env.observation_space.shape[0] + 2
 config.action_size = env.action_space.shape[0]
 
 agent = DDPGAgent(config)
@@ -55,6 +58,7 @@ agent.summary()
 
 # print(best)
 
-scores = agent.train()
+# scores = agent.train()
+scores = agent.train_her()
 
 # plot_scores(scores, polyfit_deg=6)

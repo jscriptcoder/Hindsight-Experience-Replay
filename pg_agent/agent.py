@@ -159,9 +159,7 @@ class Agent():
         for i_episode in range(1, num_episodes+1):
             # Sample a goal g and an initial state s0.
             state = self.reset()
-            goal = state[0:2]
-            loc = state[2:4]
-            obs = state[4:]
+            goal = np.array([0., 0.])
 
             score = 0
 
@@ -171,65 +169,63 @@ class Agent():
             for time_step in range(max_steps):
                 # Sample an action at using the behavioral policy from A:
                 # at ← πb(st||g)
-                action = self.act(np.concatenate((obs, goal)))
+                action = self.act(np.concatenate((state, goal)))
 
                 # Execute the action at and...
                 next_state, original_reward, done, _ = env.step(action)
-                next_loc = next_state[2:4]
-                next_obs = next_state[4:]
 
                 #  observe a new state st+1
-                episode.append((obs, next_loc, action, next_obs, done))
+                episode.append((state, action, next_state, done))
 
-                achieved_goals.append(next_loc)
+                achieved_goals.append(next_state[0:2])
 
-                obs = next_obs
+                state = next_state
                 score += original_reward
 
                 if done: break
 
-            for i, (obs, next_loc, action, next_obs, done) in enumerate(episode):
+            for i, (state, action, next_state, done) in enumerate(episode):
                 
                 # rt := r(st, at, g)
-                reward = get_reward(next_loc, goal)
+                reward = get_reward(next_state[0:2], goal)
 
                 # Store the transition (st||g, at, rt, st+1||g) in R
-                transition = make_experience(np.concatenate((obs, goal)),
+                transition = make_experience(np.concatenate((state, goal)),
                                             action,
                                             reward,
-                                            np.concatenate((next_obs, goal)),
+                                            np.concatenate((next_state, goal)),
                                             done)
                 self.memory.add(transition)
 
                 # Sample a set of additional goals for replay G := S(current episode)
-                additional_goals = random_sample(achieved_goals[i:]) # future strategy
+                # additional_goals = random_sample(achieved_goals[i:]) # future strategy
 
-                for additional_goal in additional_goals:
-                    # r' := r(st, at, g')
-                    reward = get_reward(next_loc, additional_goal)
+                # for additional_goal in additional_goals:
+                #     # r' := r(st, at, g')
+                #     reward = get_reward(next_loc, additional_goal)
                     
-                    # Store the transition (st||g', at, rt, st+1||g') in R
-                    transition = make_experience(np.concatenate((obs, additional_goal)),
-                                                action,
-                                                reward,
-                                                np.concatenate((next_obs, additional_goal)),
-                                                done)
+                #     # Store the transition (st||g', at, rt, st+1||g') in R
+                #     transition = make_experience(np.concatenate((obs, additional_goal)),
+                #                                 action,
+                #                                 reward,
+                #                                 np.concatenate((next_obs, additional_goal)),
+                #                                 done)
 
-                    self.memory.add(transition)
+                #     self.memory.add(transition)
 
-                # additional_goal = achieved_goals[-1] # m(st)
+                additional_goal = achieved_goals[-1] # m(st)
 
                 # r' := r(st, at, g')
-                # reward = reward_strategy(next_state[:2], additional_goal)
+                reward = get_reward(next_state[0:2], additional_goal)
                 
                 # Store the transition (st||g', at, rt, st+1||g') in R
-                # transition = make_experience(np.concatenate((state, additional_goal)),
-                #                             action,
-                #                             reward,
-                #                             np.concatenate((next_state, additional_goal)),
-                #                             done)
+                transition = make_experience(np.concatenate((state, additional_goal)),
+                                            action,
+                                            reward,
+                                            np.concatenate((next_state, additional_goal)),
+                                            done)
 
-                # self.memory.add(transition)
+                self.memory.add(transition)
             
             # for t = 1, N do
             # Sample a minibatch B from the replay buffer R
@@ -298,12 +294,10 @@ class Agent():
         
         for _ in range(times_solved):
             state = env.reset()
-            goal = state[0:2]
-            loc = state[2:4]
-            obs = state[4:]
+            goal = np.array([0., 0.])
 
             while True:
-                actions = self.act(np.concatenate((obs, goal)), train=False)
+                actions = self.act(np.concatenate((state, goal)), train=False)
                 state, reward, done, _ = env.step(actions)
 
                 total_reward += reward

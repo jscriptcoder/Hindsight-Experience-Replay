@@ -4,8 +4,8 @@ from torch.nn.utils import clip_grad_norm_
 
 from .ddpg_agent import DDPGAgent
 from .critic import Critic
-from .utils import soft_update
-from .device import device
+from common.utils import soft_update
+from common.device import device
 
 class TD3Agent(DDPGAgent):
     """Twin Delayed DDPG agents
