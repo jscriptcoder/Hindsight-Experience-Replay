@@ -6,7 +6,7 @@ from collections import deque
 
 from common.replay_buffer import ReplayBuffer
 from common.utils import make_experience, get_time_elapsed
-from common.utils import reward_strategy, sample_goals_strategy
+from common.utils import get_reward, random_sample
 
 class Agent():
     """Common logic"""
@@ -159,7 +159,9 @@ class Agent():
         for i_episode in range(1, num_episodes+1):
             # Sample a goal g and an initial state s0.
             state = self.reset()
-            goal = np.array([0., 0.]) # LunarLander goal
+            goal = state[0:2]
+            loc = state[2:4]
+            obs = state[4:]
 
             score = 0
 
@@ -169,70 +171,65 @@ class Agent():
             for time_step in range(max_steps):
                 # Sample an action at using the behavioral policy from A:
                 # at ← πb(st||g)
-                action = self.act(np.concatenate((state, goal)))
+                action = self.act(np.concatenate((obs, goal)))
 
                 # Execute the action at and...
                 next_state, original_reward, done, _ = env.step(action)
-
-                # if not done and time_step == max_steps-1:
-                #     # We reached max_steps
-                #     done = True
-                    
-                #     # Do we penalized?
-                #     original_reward = max_steps_reward if max_steps_reward is not None else original_reward
+                next_loc = next_state[2:4]
+                next_obs = next_state[4:]
 
                 #  observe a new state st+1
-                episode.append((state, action, next_state, done))
+                episode.append((obs, next_loc, action, next_obs, done))
 
-                achieved_goals.append(next_state[:2])
+                achieved_goals.append(next_loc)
 
-                state = next_state
+                obs = next_obs
                 score += original_reward
 
                 if done: break
 
-            for i, (state, action, next_state, done) in enumerate(episode):
+            for i, (obs, next_loc, action, next_obs, done) in enumerate(episode):
                 
                 # rt := r(st, at, g)
-                reward = reward_strategy(next_state[:2], goal) # (st, at) => st+1
+                reward = get_reward(next_loc, goal)
 
                 # Store the transition (st||g, at, rt, st+1||g) in R
-                transition = make_experience(np.concatenate((state, goal)),
+                transition = make_experience(np.concatenate((obs, goal)),
                                             action,
                                             reward,
-                                            np.concatenate((next_state, goal)),
+                                            np.concatenate((next_obs, goal)),
                                             done)
                 self.memory.add(transition)
 
                 # Sample a set of additional goals for replay G := S(current episode)
-                # additional_goals = sample_goals_strategy(achieved_goals[i:]) # future strategy
+                additional_goals = random_sample(achieved_goals[i:]) # future strategy
 
-                # for additional_goal in additional_goals:
-                #     # r' := r(st, at, g')
-                #     reward = reward_strategy(next_state, additional_goal)
+                for additional_goal in additional_goals:
+                    # r' := r(st, at, g')
+                    reward = get_reward(next_loc, additional_goal)
                     
-                #     # Store the transition (st||g', at, rt, st+1||g') in R
-                #     transition = make_experience(np.concatenate((state, additional_goal)),
-                #                                 action,
-                #                                 reward,
-                #                                 np.concatenate((next_state, additional_goal)),
-                #                                 done)
+                    # Store the transition (st||g', at, rt, st+1||g') in R
+                    transition = make_experience(np.concatenate((obs, additional_goal)),
+                                                action,
+                                                reward,
+                                                np.concatenate((next_obs, additional_goal)),
+                                                done)
 
-                #     self.memory.add(transition)
+                    self.memory.add(transition)
 
-                additional_goal = achieved_goals[-1] # m(st)
+                # additional_goal = achieved_goals[-1] # m(st)
 
                 # r' := r(st, at, g')
-                reward = reward_strategy(next_state[:2], additional_goal)
+                # reward = reward_strategy(next_state[:2], additional_goal)
                 
                 # Store the transition (st||g', at, rt, st+1||g') in R
-                transition = make_experience(np.concatenate((state, additional_goal)),
-                                            action,
-                                            reward,
-                                            np.concatenate((next_state, additional_goal)),
-                                            done)
+                # transition = make_experience(np.concatenate((state, additional_goal)),
+                #                             action,
+                #                             reward,
+                #                             np.concatenate((next_state, additional_goal)),
+                #                             done)
 
-                self.memory.add(transition)
+                # self.memory.add(transition)
             
             # for t = 1, N do
             # Sample a minibatch B from the replay buffer R
@@ -259,7 +256,7 @@ class Agent():
 
                 print('\nRunning evaluation...')
 
-                avg_score = self.eval_her_episode()
+                avg_score = self.eval_episode_her()
 
                 if avg_score >= env_solved:
                     time_elapsed = get_time_elapsed(start)
@@ -274,7 +271,6 @@ class Agent():
         env.close()
 
         return scores
-
 
     def eval_episode(self):
         times_solved = self.config.times_solved
@@ -294,17 +290,20 @@ class Agent():
                 
         return total_reward / times_solved
 
-    def eval_her_episode(self):
+    def eval_episode_her(self):
         times_solved = self.config.times_solved
         env = self.config.env
         
         total_reward = 0
-        goal = np.array([0., 0.]) # LunarLander goal
         
         for _ in range(times_solved):
             state = env.reset()
+            goal = state[0:2]
+            loc = state[2:4]
+            obs = state[4:]
+
             while True:
-                actions = self.act(np.concatenate((state, goal)), train=False)
+                actions = self.act(np.concatenate((obs, goal)), train=False)
                 state, reward, done, _ = env.step(actions)
 
                 total_reward += reward

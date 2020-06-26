@@ -184,11 +184,11 @@ def play_game(agent, min_score):
     while score < min_score:
         score = agent.eval_episode()
 
-def reward_strategy(state, goal, eps = [.001, .001]):
+def get_reward(obs, goal, eps = [.8, .8]):
     eps = np.array(eps)
-    reward = 0. if np.any(np.abs(goal - state) > eps) else 100.
+    reward = 0. if np.any(np.abs(goal - obs) > eps) else 1.
     return reward
 
-def sample_goals_strategy(goals, how_many=8):
-    k = min(len(goals), how_many)
-    return random.sample(goals, k=k)
+def random_sample(population, how_many=8):
+    k = min(len(population), how_many)
+    return random.sample(population, k=k)

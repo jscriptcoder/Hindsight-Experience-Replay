@@ -203,15 +203,15 @@ class SACAgent(Agent):
         # ---------------------------- update temeperature ---------------------------- #
         self.try_update_alpha(pred_log_props)
 
-    def save_weights(self):
+    def save_weights(self, path='weights'):
         torch.save(self.policy.state_dict(),
-                   '{}_policy_checkpoint.ph'.format(self.name))
+                   '{}/{}_policy_checkpoint.ph'.format(path, self.name))
 
-    def load_weights(self):
+    def load_weights(self, path='weights'):
         self.policy.\
             load_state_dict(
-                torch.load('{}_policy_checkpoint.ph'.
-                           format(self.name),
+                torch.load('{}/{}_policy_checkpoint.ph'.
+                           format(path, self.name),
                            map_location='cpu'))
 
     def summary(self, agent_name='SAC Agent'):
