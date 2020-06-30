@@ -14,29 +14,29 @@ from pg_agent.sac_agent import SACAgent
 warnings.filterwarnings('ignore')
 
 # RocketLander-v0 | LunarLanderContinuous-v2 | 
-env = gym.make('LunarLanderContinuous-v2')
+env = gym.make('RocketLander-v0')
 
 config = Config()
 
 config.env = env
-config.num_episodes = 5000
+config.num_episodes = 10000
 config.env_solved = 200
 config.buffer_size = int(1e6)
-config.batch_size = 64
-config.num_updates = 40
+config.batch_size = 128
+config.num_updates = 1
 config.update_every = 1
 config.policy_freq_update = 1
 config.max_steps = 2000
-config.tau = 0.005
+config.tau = 0.01
 config.gamma = 0.99
 config.lr_actor = 1e-4
 config.lr_critic = 1e-3
-config.critic_weight_decay = 1e-2
+config.critic_weight_decay = 1e-3
 # config.lr_alpha = 1e-3
 config.hidden_actor = (400, 300)
 config.hidden_critic = (400, 300)
 # config.state_size = env.observation_space.shape[0]
-config.state_size = env.observation_space.shape[0] + 2
+config.state_size = env.observation_space.shape[0] * 2
 config.action_size = env.action_space.shape[0]
 
 agent = DDPGAgent(config)

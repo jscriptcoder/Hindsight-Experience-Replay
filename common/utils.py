@@ -184,9 +184,9 @@ def play_game(agent, min_score):
     while score < min_score:
         score = agent.eval_episode()
 
-def get_reward(obs, goal, eps = [.001, .001]):
+def get_reward(state, goal, eps = 0.01):
     eps = np.array(eps)
-    reward = 0. if np.any(np.abs(goal - obs) > eps) else 100.
+    reward = 0. if np.sum(np.abs(goal - state)) > eps else 1.
     return reward
 
 def random_sample(population, how_many=8):

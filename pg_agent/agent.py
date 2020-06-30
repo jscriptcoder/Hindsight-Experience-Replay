@@ -159,7 +159,7 @@ class Agent():
         for i_episode in range(1, num_episodes+1):
             # Sample a goal g and an initial state s0.
             state = self.reset()
-            goal = np.array([0., 0.])
+            goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.])
 
             score = 0
 
@@ -177,7 +177,7 @@ class Agent():
                 #  observe a new state st+1
                 episode.append((state, action, next_state, done))
 
-                achieved_goals.append(next_state[0:2])
+                achieved_goals.append(next_state)
 
                 state = next_state
                 score += original_reward
@@ -187,7 +187,7 @@ class Agent():
             for i, (state, action, next_state, done) in enumerate(episode):
                 
                 # rt := r(st, at, g)
-                reward = get_reward(next_state[0:2], goal)
+                reward = get_reward(next_state, goal)
 
                 # Store the transition (st||g, at, rt, st+1||g) in R
                 transition = make_experience(np.concatenate((state, goal)),
@@ -216,7 +216,7 @@ class Agent():
                 additional_goal = achieved_goals[-1] # m(st)
 
                 # r' := r(st, at, g')
-                reward = get_reward(next_state[0:2], additional_goal)
+                reward = get_reward(next_state, additional_goal)
                 
                 # Store the transition (st||g', at, rt, st+1||g') in R
                 transition = make_experience(np.concatenate((state, additional_goal)),
@@ -294,7 +294,7 @@ class Agent():
         
         for _ in range(times_solved):
             state = env.reset()
-            goal = np.array([0., 0.])
+            goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.])
 
             while True:
                 actions = self.act(np.concatenate((state, goal)), train=False)
