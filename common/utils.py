@@ -52,7 +52,7 @@ make_experience = namedtuple('Experience',
                                           'next_state',
                                           'done'])
 
-def from_experience(experiences, with_goal=False):
+def from_experience(experiences):
     """Returns a tuple with (s, a, r, s', d)
 
     Args:
@@ -62,33 +62,22 @@ def from_experience(experiences, with_goal=False):
         Tuple of torch.Tensor
     """
     states = torch.from_numpy(
-            np.vstack([e.state for e in experiences if e is not None]))\
-            .float().to(device)
+            np.vstack([e.state for e in experiences if e is not None])).float().to(device)
 
     actions = torch.from_numpy(
-            np.vstack([e.action for e in experiences if e is not None]))\
-            .float().to(device)
+            np.vstack([e.action for e in experiences if e is not None])).long().to(device)
 
     rewards = torch.from_numpy(
-            np.vstack([e.reward for e in experiences if e is not None]))\
-            .float().to(device)
+            np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
 
     next_states = torch.from_numpy(
-            np.vstack([e.next_state for e in experiences if e is not None]))\
-            .float().to(device)
+            np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
 
     dones = torch.from_numpy(
             np.vstack([e.done for e in experiences if e is not None])\
-            .astype(np.uint8)).float().to(device)
+            .astype(np.uint8)).to(device)
     
-    if with_goal:
-        goals = torch.from_numpy(
-            np.vstack([e.goal for e in experiences if e is not None]))\
-            .float().to(device)
-        
-        return states, actions, rewards, next_states, dones, goals
-    else:
-        return states, actions, rewards, next_states, dones
+    return states, actions, rewards, next_states, dones
 
 def run_env(env, get_action=None, max_t=1000, close_env=True):
     """Run actions against an environment.
