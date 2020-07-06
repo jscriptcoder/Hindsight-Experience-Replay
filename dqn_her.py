@@ -29,7 +29,7 @@ EPOCHS = 30 # 200
 CYCLES = 50
 EPISODES = 16
 OPTIMS = 50 # 40
-MAX_STEPS = 300 # BITS
+MAX_STEPS = 250 # BITS
 FUTURE_K = 4
 STATE_SIZE = gym_env.observation_space.shape[0] * 2 # BITS * 2
 ACTION_SIZE = gym_env.action_space.n # BITS
@@ -83,7 +83,7 @@ class LunarLanderEnv:
         self.goal = np.zeros(STATE_SIZE)
 
     def reset(self):
-        self.goal = np.zeros(self.env.observation_space.shape[0])
+        self.goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.])
         return self.env.reset(), np.copy(self.goal)
 
     def step(self, action):
@@ -98,7 +98,7 @@ class LunarLanderEnv:
         self.env.close()
 
     @staticmethod
-    def compute_reward(state, goal, eps=0.1):
+    def compute_reward(state, goal, eps=0.2):
         done = np.sum(np.abs(goal - state)) < eps
         return 0. if done else -1., done
 
