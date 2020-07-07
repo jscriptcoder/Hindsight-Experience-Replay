@@ -25,10 +25,10 @@ BUFFER_SIZE = int(1e6)
 BATCH_SIZE = 256
 GAMMA = 0.99
 TAU = 1. # 0.95
-EPOCHS = 30 # 200
+EPOCHS = 200
 CYCLES = 50
 EPISODES = 16
-OPTIMS = 50 # 40
+OPTIMS = 40
 MAX_STEPS = 250 # BITS
 FUTURE_K = 4
 STATE_SIZE = gym_env.observation_space.shape[0] * 2 # BITS * 2
@@ -111,15 +111,20 @@ class DuelingQNetwork(nn.Module):
         self.features = nn.Sequential(
             nn.Linear(state_size, 256),
             nn.ReLU(),
+            nn.Linear(256, 128),
         )
         
         self.advantage = nn.Sequential(
-            nn.Linear(256, action_size),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, action_size),
             
         )
         
         self.value = nn.Sequential(
-            nn.Linear(256, 1)
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
         )
             
     def forward(self, state):
