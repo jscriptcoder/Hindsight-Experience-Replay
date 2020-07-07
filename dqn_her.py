@@ -25,7 +25,7 @@ BUFFER_SIZE = int(1e6)
 BATCH_SIZE = 256
 GAMMA = 0.99
 TAU = 1. # 0.95
-EPOCHS = 200
+EPOCHS = 30
 CYCLES = 50
 EPISODES = 16
 OPTIMS = 40
@@ -37,7 +37,7 @@ LR = 0.001
 EPS_START = 0.2
 EPS_END = 0.0
 EPS_DECAY = 0.95
-ENV_SOLVED = 0
+ENV_SOLVED = 0 # 200
 TIMES_SOLVED = 100
 EVAL_EVERY = 1
 
@@ -90,6 +90,7 @@ class LunarLanderEnv:
         next_state, env_reward, env_done, info = self.env.step(action)
         reward, done = self.compute_reward(next_state, self.goal)
         return next_state, reward, (done or env_done), info
+        # return self.env.step(action)
 
     def render(self):
         self.env.render()
@@ -232,7 +233,7 @@ class DQNAgent:
     def train(self):
         print('Training on {}'.format(device))
 
-        writer = SummaryWriter(comment='_LunarLander')
+        writer = SummaryWriter(comment='_LunarLander_HER')
         eps = EPS_START
 
         for epoch in range(EPOCHS):
@@ -256,8 +257,8 @@ class DQNAgent:
 
                         state = next_state
                         
-                        if done and reward == 0.: 
-                            success += 1
+                        if done: 
+                            if reward == 0: success += 1
                             break
                     # End Steps
 
@@ -305,6 +306,7 @@ class DQNAgent:
             print('\nRunning evaluation...')
 
             mean_score = self.eval_episode(use_target=False, render=False)
+            writer.add_scalar('Evaluation Mean Reward', mean_score, epoch)
 
             if mean_score >= ENV_SOLVED:
                 print('Environment solved {} times consecutively!'.format(TIMES_SOLVED))
