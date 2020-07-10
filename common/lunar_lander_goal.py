@@ -17,8 +17,7 @@ class LunarLanderGoal:
         info = {
             'env_reward': env_reward, 
             'achieved_goal': achieved_goal.copy(),
-            # 'success': reward == 0
-            'success': env_reward == 100
+            'success': reward == 0
         }
         
         return next_state, reward, done, info
