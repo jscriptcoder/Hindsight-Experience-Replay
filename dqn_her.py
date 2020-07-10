@@ -20,76 +20,50 @@ warnings.filterwarnings('ignore')
 
 gym_env = gym.make('LunarLander-v2')
 
-BITS = 50
 BUFFER_SIZE = int(1e6)
 BATCH_SIZE = 256
-GAMMA = 0.99
-TAU = 1. # 0.95
-EPOCHS = 200
+GAMMA = 0.98
+TAU = 0.95
+EPOCHS = 30
 CYCLES = 50
 EPISODES = 16
 OPTIMS = 40
-MAX_STEPS = 250 # BITS
+MAX_STEPS = 500
 FUTURE_K = 4
-STATE_SIZE = gym_env.observation_space.shape[0] * 2 # BITS * 2
-ACTION_SIZE = gym_env.action_space.n # BITS
+STATE_SIZE = gym_env.observation_space.shape[0]
+ACTION_SIZE = gym_env.action_space.n
+GOAL_SIZE = STATE_SIZE-2
 LR = 0.001
 EPS_START = 0.2
-EPS_END = 0.0
+EPS_END = 0.01
 EPS_DECAY = 0.95
-ENV_SOLVED = 0
+ENV_SOLVED = 200
 TIMES_SOLVED = 100
-EVAL_EVERY = 1
 
 seed_all(0)
 
 
-
-class BitFlipEnv:
-
-    def __init__(self, bits):
-        self.bits = bits
-        self.state = np.zeros(bits)
-        self.goal = np.zeros(bits)
-        self.reset()
-
-    def reset(self):
-        self.state = np.random.randint(2, size=self.bits)
-        self.goal = np.random.randint(2, size=self.bits)
-        return np.copy(self.state), np.copy(self.goal)
-
-    def step(self, action):
-        self.state[action] = 1 - self.state[action]
-        reward, done = self.compute_reward(self.state, self.goal)
-        return np.copy(self.state), reward, done, {}
-
-    def render(self):
-        print('===')
-        print('State:\t{}'.format(self.state.tolist()))
-        print('Goal:\t{}'.format(self.goal.tolist()))
-        print('===')
-    
-    def close(self):
-        pass
-    
-    @staticmethod
-    def compute_reward(state, goal):
-        done = np.all(np.equal(state, goal))
-        return 0. if done else -1., done
-
 class LunarLanderEnv:
     def __init__(self, gym_env):
         self.env = gym_env
-        self.goal = np.zeros(STATE_SIZE)
+        self.goal = np.zeros(GOAL_SIZE)
 
     def reset(self):
-        self.goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.])
-        return self.env.reset(), np.copy(self.goal)
+        self.goal = np.array([0., 0., 0., 0., 0., 0.])
+        return self.env.reset(), self.goal.copy()
 
     def step(self, action):
-        next_state, env_reward, env_done, info = self.env.step(action)
-        reward, done = self.compute_reward(next_state, self.goal)
-        return next_state, reward, (done or env_done), info
+        next_state, env_reward, done, info = self.env.step(action)
+        achieved_goal = next_state[:-2]
+        reward, distance = self.compute_reward(achieved_goal, self.goal)
+        info = {
+            'env_reward': env_reward, 
+            'achieved_goal': achieved_goal.copy(),
+            'goal': self.goal.copy(),
+            'distance': distance,
+            'success': reward == 0
+        }
+        return next_state, reward, done, info
 
     def render(self):
         self.env.render()
@@ -98,9 +72,37 @@ class LunarLanderEnv:
         self.env.close()
 
     @staticmethod
-    def compute_reward(state, goal, eps=0.2):
-        done = np.sum(np.abs(goal - state)) < eps
-        return 0. if done else -1., done
+    def compute_reward(state, goal, eps=0.1):
+        distance = np.linalg.norm(state - goal, axis=-1)
+        return -(distance > eps).astype(np.float32), distance
+
+class Normalizer:
+    def __init__(self, size, min_std=1e-2):
+        self.min_std = min_std
+        self.size = size
+
+        self.sum = np.zeros(self.size, np.float32)
+        self.sumsq = np.zeros(self.size, np.float32)
+        self.count = 0
+    
+        self.mean = np.zeros(self.size, np.float32)
+        self.std = np.ones(self.size, np.float32)
+
+    def update(self, v):
+        v = v.reshape(-1, self.size)
+        self.sum += v.sum(axis=0)
+        self.sumsq += (np.square(v)).sum(axis=0)
+        self.count += v.shape[0]
+
+        # recompute stats
+        self.mean = self.sum / self.count
+        var = self.sumsq / self.count - (self.sum / self.count)**2
+        var = np.maximum(self.min_std**2, var)
+        self.std = np.maximum(var**.5, self.min_std)
+
+    def normalize(self, v):
+        v_norm = (v - self.mean) / self.std
+        return v_norm
 
 
 
@@ -111,20 +113,20 @@ class DuelingQNetwork(nn.Module):
         self.features = nn.Sequential(
             nn.Linear(state_size, 256),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(256, 256),
         )
         
         self.advantage = nn.Sequential(
-            nn.Linear(128, 64),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(64, action_size),
+            nn.Linear(256, action_size),
             
         )
         
         self.value = nn.Sequential(
-            nn.Linear(128, 64),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(256, 1),
         )
             
     def forward(self, state):
@@ -137,16 +139,19 @@ class DuelingQNetwork(nn.Module):
 class DQNAgent:
 
     def __init__(self):
-        self.qn_local = DuelingQNetwork(STATE_SIZE, 
+        self.qn_local = DuelingQNetwork(STATE_SIZE+GOAL_SIZE, 
                                         ACTION_SIZE).to(device)
         
-        self.qn_target = DuelingQNetwork(STATE_SIZE, 
+        self.qn_target = DuelingQNetwork(STATE_SIZE+GOAL_SIZE, 
                                          ACTION_SIZE).to(device)
         
         self.soft_update(1.)
         
         self.optimizer = optim.Adam(self.qn_local.parameters(), lr=LR)
         self.memory = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE)
+
+        self.state_norm = Normalizer(STATE_SIZE)
+        self.goal_norm = Normalizer(GOAL_SIZE)
 
     def act(self, state, eps=0., use_target=False):
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
@@ -156,7 +161,6 @@ class DQNAgent:
         model.eval()
         with torch.no_grad():
             action_values = model(state)
-        
         model.train()
         
         if random.random() > eps:
@@ -180,6 +184,9 @@ class DQNAgent:
         max_q = self.qn_target(next_states).detach().gather(-1, best_action)
         
         q_targets = rewards + (GAMMA * max_q * (1 - dones))
+        clip_return = 1 / (1 - GAMMA)
+        q_targets = torch.clamp(q_targets, -clip_return, 0)
+
         q_expected = self.qn_local(states).gather(-1, actions)
 
         loss = F.mse_loss(q_expected, q_targets)
@@ -195,18 +202,25 @@ class DQNAgent:
                                              self.qn_local.parameters()):
             target_param.data.copy_(tau * local_param + (1.0 - tau) * target_param)
     
-    def add_experience(self, state, action, reward, next_state, done):
-        experience = make_experience(state, 
+    def add_experience(self, state, action, reward, next_state, done, goal):
+        self.state_norm.update(state)
+        self.goal_norm.update(goal)
+
+        state_goal = self.process_input(state, goal)
+        next_state_goal = self.process_input(next_state, goal)
+        experience = make_experience(state_goal, 
                                      action, 
                                      reward, 
-                                     next_state, 
-                                     done)
+                                     next_state_goal, 
+                                     done, 
+                                     {})
         self.memory.add(experience)
     
-    def compute_reward(self, state, goal, eps=0.1):
-        done = np.sum(np.abs(goal - state)) < eps
-        return 0. if done else -1., done
-    
+    def process_input(self, state, goal):
+        state = self.state_norm.normalize(state)
+        goal = self.goal_norm.normalize(goal)
+        return np.concatenate([state, goal])
+
     def eval_episode(self, use_target=False, render=False):
         total_reward = 0
         
@@ -216,12 +230,12 @@ class DQNAgent:
             for step in range(MAX_STEPS):
                 
                 if render and t == TIMES_SOLVED-1: env.render()
-                    
-                action = self.act(np.concatenate([state, goal]), use_target=use_target)
-                # action = self.act(state, use_target=use_target)
-                state, reward, done, _ = env.step(action)
+                
+                state_input = self.process_input(state, goal)
+                action = self.act(state_input, use_target=use_target)
+                state, reward, done, info = env.step(action)
 
-                total_reward += reward
+                total_reward += info['env_reward']
     
                 if done: break
             
@@ -246,61 +260,62 @@ class DQNAgent:
                     trajectory = []
                     state, goal = env.reset()
 
+
                     for step in range(MAX_STEPS):
-                        action = self.act(np.concatenate([state, goal]), eps)
-                        # action = self.act(state, eps)
+                        state_input = self.process_input(state, goal)
+                        action = self.act(state_input, eps)
 
-                        next_state, reward, done, _ = env.step(action)
+                        next_state, reward, done, info = env.step(action)
 
-                        trajectory.append(make_experience(state, action, reward, next_state, done))
+                        trajectory.append(make_experience(state, action, reward, next_state, done, info))
 
                         state = next_state
-                        
-                        if done and reward == 0.: 
-                            success += 1
-                            break
+
+                        success += 1 if info['success'] else 0
+
+                        if done: break
                     # End Steps
 
                     steps_taken = len(trajectory)
                     for t in range(steps_taken):
-                        state, action, reward, next_state, done = trajectory[t]
+                        state, action, reward, next_state, done, info = trajectory[t]
                         
-                        self.add_experience(np.concatenate([state, goal]), 
+                        self.add_experience(state, 
                                             action, 
                                             reward, 
-                                            np.concatenate([next_state, goal]), 
-                                            done)
-
-                        # self.add_experience(state, 
-                        #                     action, 
-                        #                     reward, 
-                        #                     next_state, 
-                        #                     done)
+                                            next_state, 
+                                            done, 
+                                            goal)
 
                         for _ in range(FUTURE_K):
                             future = np.random.randint(t, steps_taken)
-                            achieved_goal = trajectory[future].next_state
-                            reward, done = env.compute_reward(next_state, achieved_goal)
+
+                            achieved_goal = info['achieved_goal'] # current time t
+                            new_goal = trajectory[future].info['achieved_goal'] # t <= future < T
                             
-                            self.add_experience(np.concatenate([state, achieved_goal]), 
+                            reward, _ = env.compute_reward(achieved_goal, new_goal)
+                            
+                            self.add_experience(state, 
                                                 action, 
                                                 reward, 
-                                                np.concatenate([next_state, achieved_goal]), 
-                                                done)
+                                                next_state, 
+                                                done, 
+                                                new_goal)
                         # End Goals
                     # End Steps
                 # End Episode
 
                 for _ in range(OPTIMS):
-                    self.optimize()
+                    loss = self.optimize()
                 # End Optimization
 
                 self.soft_update(TAU)
             # End Cycle
             
             success_rate = success / (EPISODES * CYCLES)
-            print("epoch: {}, exploration: {:.0f}%, success rate: {:.2f}".format(epoch + 1, 100 * eps, success_rate))
+            print("epoch: {}, exploration: {:.0f}%, success rate: {:.2f}, value loss: {:.3f}".format(epoch + 1, 100 * eps, success_rate, loss))
             writer.add_scalar('Success Rate', success_rate, epoch)
+            writer.add_scalar('Value Loss', loss, epoch)
 
             print('\nRunning evaluation...')
 

@@ -50,7 +50,8 @@ make_experience = namedtuple('Experience',
                                           'action',
                                           'reward',
                                           'next_state',
-                                          'done'])
+                                          'done', 
+                                          'info'])
 
 def from_experience(experiences):
     """Returns a tuple with (s, a, r, s', d)
