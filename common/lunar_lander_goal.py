@@ -9,18 +9,18 @@ class LunarLanderGoal:
         return self.env.reset(), self.goal.copy()
 
     def step(self, action):
-        next_state, env_reward, done, info = self.env.step(action)
+        next_state, env_reward, env_done, info = self.env.step(action)
 
         achieved_goal = next_state[:-2]
-        reward, distance = self.compute_reward(achieved_goal, self.goal)
+        reward, done = self.compute_reward(achieved_goal, self.goal)
 
         info = {
             'env_reward': env_reward, 
             'achieved_goal': achieved_goal.copy(),
-            'success': reward == 0
+            'success': done
         }
         
-        return next_state, reward, done, info
+        return next_state, reward, (done or env_done), info
 
     def render(self):
         self.env.render()
@@ -31,6 +31,8 @@ class LunarLanderGoal:
     @staticmethod
     def compute_reward(state, goal, eps=0.1):
         distance = np.linalg.norm(state - goal, axis=-1) # euclidean distance
+        done = distance <= eps
 
         # sparse reward (-1 => fail, 0 => success)
-        return -(distance > eps).astype(np.float32), distance
+        reward = 0. if done else -1.
+        return reward, done
