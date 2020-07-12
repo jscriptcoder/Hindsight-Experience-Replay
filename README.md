@@ -9,6 +9,8 @@ Research in progress...
 3. [Hindsight policy gradients](https://arxiv.org/abs/1711.06006)
 4. [Rewriting History with Inverse RL: Hindsight Inference for Policy Improvement](https://arxiv.org/abs/2002.11089)
 5. [Advances in Experience Replay](https://arxiv.org/abs/1805.05536)
+6. [Curriculum-guided Hindsight Experience Replay](https://papers.nips.cc/paper/9425-curriculum-guided-hindsight-experience-replay)
+7. [Soft Hindsight Experience Replay](https://arxiv.org/abs/2002.02089)
 
 ## Articles
 
