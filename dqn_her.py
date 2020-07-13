@@ -24,21 +24,21 @@ gym_env = gym.make('LunarLander-v2')
 
 BUFFER_SIZE = int(1e6)
 BATCH_SIZE = 256
-GAMMA = 0.98
+GAMMA = 0.99
 TAU = 1.
 EPOCHS = 200
 CYCLES = 50
 EPISODES = 16
 OPTIMS = 40
-MAX_STEPS = 200
+MAX_STEPS = 1000
 FUTURE_K = 4
 STATE_SIZE = gym_env.observation_space.shape[0]
 ACTION_SIZE = gym_env.action_space.n
 GOAL_SIZE = STATE_SIZE-2
-LR = 0.0005
+LR = 0.001
 EPS_START = 0.2
 EPS_END = 0.01
-EPS_DECAY = 0.95
+EPS_DECAY = 1.
 ENV_SOLVED = 200
 TIMES_SOLVED = 100
 
@@ -147,8 +147,8 @@ class DQNAgent:
         return np.concatenate([state, goal])
     
     def add_experience(self, state, action, reward, next_state, done, goal):
-        self.state_norm.update(state, recompute=False)
-        self.goal_norm.update(goal, recompute=False)
+        self.state_norm.update(state)
+        self.goal_norm.update(goal)
 
         state_ = self.process_input(state, goal)
         next_state_ = self.process_input(next_state, goal)
@@ -209,6 +209,13 @@ class DQNAgent:
 
                         next_state, reward, done, info = env.step(action)
 
+                        self.add_experience(state, 
+                                            action, 
+                                            reward, 
+                                            next_state, 
+                                            done, 
+                                            goal)
+                        
                         trajectory.append(make_experience(state, action, reward, next_state, done, info))
 
                         state = next_state
@@ -221,31 +228,27 @@ class DQNAgent:
 
                     total_rewards.append(score)
                     successes.append(info['success'])
-
-                    new_goal = trajectory[-1].info['achieved_goal'] # Final achieved goal
                     
                     steps_taken = len(trajectory)
-                    for t in range(steps_taken):
-                        state, action, reward, next_state, done, info = trajectory[t]
-                        
-                        self.add_experience(state, 
-                                            action, 
-                                            reward, 
-                                            next_state, 
-                                            done, 
-                                            goal)
-                        
-                        achieved_goal = info['achieved_goal'] # current time t
-                        reward, done = env.compute_reward(achieved_goal, new_goal)
+                    goals_idx = np.random.choice(steps_taken, FUTURE_K, replace=False)
 
-                        self.add_experience(state, 
-                                            action, 
-                                            reward, 
-                                            next_state, 
-                                            done, 
-                                            new_goal)
-                        # End Goals
-                    # End Steps
+                    for goal_i in goals_idx:
+                        new_goal = trajectory[goal_i].info['achieved_goal']
+
+                        for t in range(goal_i+1):
+                            state, action, reward, next_state, done, info = trajectory[t]
+
+                            achieved_goal = trajectory[t].info['achieved_goal']
+                            reward, _ = env.compute_reward(achieved_goal, new_goal)
+
+                            self.add_experience(state, 
+                                                action, 
+                                                reward, 
+                                                next_state, 
+                                                done, 
+                                                new_goal)
+                        # End HER
+                    # End Goals
                 # End Episode
 
                 losses = []
@@ -280,8 +283,7 @@ class DQNAgent:
             else:
                 print('No success. Avg score: {:.3f}'.format(mean_score))
             
-            self.state_norm.recompute()
-            # eps = max(EPS_END, EPS_DECAY*eps)
+            eps = max(EPS_END, EPS_DECAY*eps)
         # End Epoch
 
 agent = DQNAgent()
