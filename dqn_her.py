@@ -23,19 +23,19 @@ warnings.filterwarnings('ignore')
 gym_env = gym.make('LunarLander-v2')
 
 BUFFER_SIZE = int(1e6)
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 GAMMA = 0.99
-TAU = 1.
-EPOCHS = 200
-CYCLES = 50
-EPISODES = 16
-OPTIMS = 40
-MAX_STEPS = 1000
+TAU = 0.95
+EPOCHS = 100
+CYCLES = 10
+EPISODES = 10
+OPTIMS = 10
+MAX_STEPS = 200
 FUTURE_K = 4
 STATE_SIZE = gym_env.observation_space.shape[0]
 ACTION_SIZE = gym_env.action_space.n
-GOAL_SIZE = STATE_SIZE-2
-LR = 0.001
+GOAL_SIZE = 0 # STATE_SIZE-2
+LR = 0.0005
 EPS_START = 0.2
 EPS_END = 0.01
 EPS_DECAY = 1.
@@ -51,21 +51,21 @@ class DuelingQNetwork(nn.Module):
         super().__init__()
         
         self.features = nn.Sequential(
-            nn.Linear(state_size, 256),
+            nn.Linear(state_size, 64),
             nn.ReLU(),
         )
         
         self.advantage = nn.Sequential(
-            nn.Linear(256, 256),
+            nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(256, action_size),
+            nn.Linear(64, action_size),
             
         )
         
         self.value = nn.Sequential(
-            nn.Linear(256, 256),
+            nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(256, 1),
+            nn.Linear(64, 1),
         )
             
     def forward(self, state):
@@ -90,7 +90,7 @@ class DQNAgent:
         self.memory = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE)
 
         self.state_norm = Normalizer(STATE_SIZE)
-        self.goal_norm = Normalizer(GOAL_SIZE)
+        # self.goal_norm = Normalizer(GOAL_SIZE)
 
     def act(self, state, eps=0., use_target=False):
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
@@ -142,13 +142,14 @@ class DQNAgent:
             target_param.data.copy_(tau * local_param + (1.0 - tau) * target_param)
     
     def process_input(self, state, goal):
-        state = self.state_norm.normalize(state)
-        goal = self.goal_norm.normalize(goal)
-        return np.concatenate([state, goal])
+        # state = self.state_norm.normalize(state)
+        # goal = self.goal_norm.normalize(goal)
+        # return np.concatenate([state, goal])
+        return state
     
     def add_experience(self, state, action, reward, next_state, done, goal):
         self.state_norm.update(state)
-        self.goal_norm.update(goal)
+        # self.goal_norm.update(goal)
 
         state_ = self.process_input(state, goal)
         next_state_ = self.process_input(next_state, goal)
@@ -222,33 +223,34 @@ class DQNAgent:
 
                         score += info['env_reward']
 
-                        if done: 
-                            break
+                        if done: break
                     # End Steps
 
                     total_rewards.append(score)
                     successes.append(info['success'])
                     
-                    steps_taken = len(trajectory)
-                    goals_idx = np.random.choice(steps_taken, FUTURE_K, replace=False)
+                    # steps_taken = len(trajectory)
+                    # goals_idx = np.random.choice(steps_taken, FUTURE_K, replace=False)
 
-                    for goal_i in goals_idx:
-                        new_goal = trajectory[goal_i].info['achieved_goal']
+                    # for goal_i in goals_idx:
+                    #     new_goal = trajectory[goal_i].info['achieved_goal']
 
-                        for t in range(goal_i+1):
-                            state, action, reward, next_state, done, info = trajectory[t]
+                    #     for t in range(goal_i+1):
+                    #         state, action, reward, next_state, done, info = trajectory[t]
 
-                            achieved_goal = trajectory[t].info['achieved_goal']
-                            reward, _ = env.compute_reward(achieved_goal, new_goal)
+                    #         achieved_goal = trajectory[t].info['achieved_goal']
+                    #         reward, done = env.compute_reward(achieved_goal, new_goal)
 
-                            self.add_experience(state, 
-                                                action, 
-                                                reward, 
-                                                next_state, 
-                                                done, 
-                                                new_goal)
-                        # End HER
-                    # End Goals
+                    #         self.add_experience(state, 
+                    #                             action, 
+                    #                             reward, 
+                    #                             next_state, 
+                    #                             done, 
+                    #                             new_goal)
+
+                    #         if done: break
+                    #     # End HER
+                    # # End Goals
                 # End Episode
 
                 losses = []
