@@ -11,15 +11,15 @@ class LunarLanderGoal:
     def step(self, action):
         next_state, env_reward, env_done, info = self.env.step(action)
 
-        # achieved_goal = next_state[:-2]
-        # reward, done = self.compute_reward(achieved_goal, self.goal)
-        reward, done = env_reward, env_done
+        achieved_goal = next_state[:-2]
+        reward, done = self.compute_reward(achieved_goal, self.goal)
+        # reward, done = env_reward, env_done
 
         info = {
             'env_reward': env_reward, 
-            # 'achieved_goal': achieved_goal.copy(),
-            # 'success': done
-            'success': env_reward == 100
+            'achieved_goal': achieved_goal.copy(),
+            'success': done
+            # 'success': env_reward == 100
         }
         
         return next_state, reward, (done or env_done), info
