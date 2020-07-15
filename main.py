@@ -15,11 +15,12 @@ config = Config()
 
 config.state_size = gym_env.observation_space.shape[0]
 config.action_size = gym_env.action_space.n
-config.goal_size = config.state_size - 2
+config.goal_size = config.state_size
+config.use_her = False
 
 seed_all(0)
 
-env = LunarLanderWrapper(gym_env)
+env = LunarLanderWrapper(gym_env, config.use_her)
 
 agent = DQNAgent(config)
 

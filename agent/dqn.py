@@ -17,14 +17,16 @@ class DQNAgent:
         self.config = config
 
         lr = config.lr
+        use_her = config.use_her
         state_size = config.state_size
         goal_size = config.goal_size
         action_size = config.action_size
         buffer_size = config.buffer_size
         batch_size = config.batch_size
 
-        self.qn_local = DuelingQNetwork(state_size+goal_size, action_size).to(device)
-        self.qn_target = DuelingQNetwork(state_size+goal_size, action_size).to(device)
+        net_state_size = state_size + (goal_size if use_her else 0)
+        self.qn_local = DuelingQNetwork(net_state_size, action_size).to(device)
+        self.qn_target = DuelingQNetwork(net_state_size, action_size).to(device)
         
         self.soft_update(1.)
         
@@ -67,14 +69,21 @@ class DQNAgent:
          dones) = from_experience(experiences)
         
         gamma = self.config.gamma
+        use_her = self.config.use_her
+        use_double = self.config.use_double
         use_huber_loss = self.config.use_huber_loss
         
-        best_action = self.qn_local(next_states).argmax(-1, keepdim=True)
-        max_q = self.qn_target(next_states).detach().gather(-1, best_action)
+        if use_double:
+            best_action = self.qn_local(next_states).argmax(-1, keepdim=True)
+            max_q = self.qn_target(next_states).detach().gather(-1, best_action)
+        else:
+            max_q = self.qn_target(next_states).detach().max(-1, keepdim=True)[0]
         
         q_targets = rewards + (gamma * max_q * (1 - dones))
-        # clip_return = 1 / (1 - gamma)
-        # q_targets = torch.clamp(q_targets, -clip_return, 0)
+
+        if use_her:
+            clip_return = 1 / (1 - gamma)
+            q_targets = torch.clamp(q_targets, -clip_return, 0)
 
         q_expected = self.qn_local(states).gather(-1, actions)
 
@@ -94,14 +103,23 @@ class DQNAgent:
                                              self.qn_local.parameters()):
             target_param.data.copy_(tau * local_param + (1.0 - tau) * target_param)
     
-    def process_input(self, state, goal):
+    def process_input(self, state, goal=None):
+        use_her = self.config.use_her
+
         # state = self.state_norm.normalize(state)
-        # goal = self.goal_norm.normalize(goal)
-        return np.concatenate([state, goal])
+
+        if use_her:
+            # goal = self.goal_norm.normalize(goal)
+            return np.concatenate([state, goal])
+        else:
+            return state
     
-    def add_experience(self, state, action, reward, next_state, done, goal):
+    def add_experience(self, state, action, reward, next_state, done, goal=None):
+        use_her = self.config.use_her
+
         self.state_norm.update(state)
-        self.goal_norm.update(goal)
+
+        if use_her: self.goal_norm.update(goal)
 
         state_ = self.process_input(state, goal)
         next_state_ = self.process_input(next_state, goal)
@@ -149,15 +167,17 @@ class DQNAgent:
         cycles = self.config.cycles
         episodes = self.config.episodes
         max_steps = self.config.max_steps
+        use_her = self.config.use_her
         future_k = self.config.future_k
         optims = self.config.optims
         env_solved = self.config.env_solved
+        times_solved = self.config.times_solved
 
         writer = SummaryWriter(comment='_LunarLander')
 
         for epoch in range(epochs):
-            
-            successes = []
+
+            rewards = []
             
             for cycle in range(cycles):
 
@@ -179,41 +199,41 @@ class DQNAgent:
                         
                         trajectory.append(make_experience(state, action, reward, next_state, done, info))
 
+                        rewards.append(reward)
                         state = next_state
-
+                        
                         if done: break
                     # End Steps
-
-                    successes.append(info['success'])
                     
-                    steps_taken = len(trajectory)
+                    if use_her:
+                        steps_taken = len(trajectory)
+                        
+                        if future_k == 1:
+                            # final stragegy
+                            goals_idx = [steps_taken-1]
+                        else: 
+                            # future strategy
+                            goals_idx = np.random.choice(steps_taken, future_k, replace=False)
 
-                    if future_k == 1:
-                        # final stragegy
-                        goals_idx = [steps_taken-1]
-                    else: 
-                        # future strategy
-                        goals_idx = np.random.choice(steps_taken, future_k, replace=False)
+                        for goal_i in goals_idx:
+                            new_goal = trajectory[goal_i].info['achieved_goal']
 
-                    for goal_i in goals_idx:
-                        new_goal = trajectory[goal_i].info['achieved_goal']
+                            for t in range(goal_i+1):
+                                state, action, reward, next_state, done, info = trajectory[t]
 
-                        for t in range(goal_i+1):
-                            state, action, reward, next_state, done, info = trajectory[t]
+                                achieved_goal = trajectory[t].info['achieved_goal']
+                                reward, done = env.compute_reward(achieved_goal, new_goal)
 
-                            achieved_goal = trajectory[t].info['achieved_goal']
-                            reward, done = env.compute_reward(achieved_goal, new_goal)
+                                self.add_experience(state, 
+                                                    action, 
+                                                    reward, 
+                                                    next_state, 
+                                                    done, 
+                                                    new_goal)
 
-                            self.add_experience(state, 
-                                                action, 
-                                                reward, 
-                                                next_state, 
-                                                done, 
-                                                new_goal)
-
-                            if done: break
-                        # End HER
-                    # End Goals
+                                if done: break
+                            # End HER
+                        # End Goals
                 # End Episode
 
                 for _ in range(optims):
@@ -223,21 +243,23 @@ class DQNAgent:
                 self.soft_update(tau)
             # End Cycle
             
-            success_rate = np.mean(successes)
-            print('epoch: {}, exploration: {:.2f}%, success rate: {:.3f}'.format(epoch + 1, 100 * eps, success_rate))
-            writer.add_scalar('Success Rate', success_rate, epoch)
+            avg_reward = np.mean(rewards)
 
-            print('\nRunning evaluation...')
+            print('epoch: {}, exploration: {:.2f}%, avg score: {:.3f}'.format(epoch + 1, 100 * eps, avg_reward))
+            writer.add_scalar('Avg Score', avg_reward, epoch)
 
-            mean_score = self.eval_episode(env, use_target=False, render=True)
-            writer.add_scalar('Evaluation Score', mean_score, epoch)
+            if abs(avg_reward) <= 0.005:
+                print('\nRunning evaluation...')
 
-            if mean_score >= env_solved:
-                print('Environment solved {} times consecutively!'.format(TIMES_SOLVED))
-                print('Avg score: {:.3f}'.format(mean_score))
-                break
-            else:
-                print('No success. Avg score: {:.3f}'.format(mean_score))
+                mean_score = self.eval_episode(env, use_target=False, render=True)
+                writer.add_scalar('Evaluation Score', mean_score, epoch)
+
+                if mean_score >= env_solved:
+                    print('Environment solved {} times consecutively!'.format(times_solved))
+                    print('Avg score: {:.3f}'.format(mean_score))
+                    break
+                else:
+                    print('No success. Avg score: {:.3f}'.format(mean_score))
             
             eps = max(eps_end, eps_decay*eps)
         # End Epoch
