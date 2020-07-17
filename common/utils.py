@@ -23,10 +23,6 @@ def hidden_init(layer):
     lim = 1. / np.sqrt(fan_in)
     return (-lim, lim)
 
-def soft_update(local_model, target_model, tau):
-    for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
-        target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
-
 # Helper to create a experience tuple with named fields
 make_experience = namedtuple('Experience',
                              field_names=['state',

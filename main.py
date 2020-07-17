@@ -16,7 +16,9 @@ config = Config()
 config.state_size = gym_env.observation_space.shape[0]
 config.action_size = gym_env.action_space.n
 config.goal_size = config.state_size
-config.use_her = False
+config.eps_start = 0.2
+config.eps_decay = 1.
+config.use_her = True
 
 seed_all(0)
 

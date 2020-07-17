@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from common.replay_buffer import ReplayBuffer
 from common.utils import make_experience, from_experience, seed_all
 from common.device import device
-from common.normalizer import Normalizer
+from common.scaler import StandarScaler, MinMaxScaler
 from agent.network import DuelingQNetwork
 
 class DQNAgent:
@@ -33,8 +33,19 @@ class DQNAgent:
         self.optimizer = optim.Adam(self.qn_local.parameters(), lr=lr)
         self.memory = ReplayBuffer(buffer_size, batch_size)
         
-        self.state_norm = Normalizer(state_size)
-        self.goal_norm = Normalizer(goal_size)
+        self.state_scaler = StandarScaler(state_size)
+        self.goal_scaler = StandarScaler(goal_size)
+
+    def process_input(self, state, goal=None):
+        use_her = self.config.use_her
+
+        state = self.state_scaler.scale(state)
+
+        if use_her:
+            goal = self.goal_scaler.scale(goal)
+            return np.concatenate([state, goal])
+        else:
+            return state
 
     def act(self, state, goal, eps=0., use_target=False):
         action_size = self.config.action_size
@@ -103,23 +114,11 @@ class DQNAgent:
                                              self.qn_local.parameters()):
             target_param.data.copy_(tau * local_param + (1.0 - tau) * target_param)
     
-    def process_input(self, state, goal=None):
-        use_her = self.config.use_her
-
-        # state = self.state_norm.normalize(state)
-
-        if use_her:
-            # goal = self.goal_norm.normalize(goal)
-            return np.concatenate([state, goal])
-        else:
-            return state
-    
     def add_experience(self, state, action, reward, next_state, done, goal=None):
         use_her = self.config.use_her
 
-        self.state_norm.update(state)
-
-        if use_her: self.goal_norm.update(goal)
+        self.state_scaler.update(state)
+        if use_her: self.goal_scaler.update(goal)
 
         state_ = self.process_input(state, goal)
         next_state_ = self.process_input(next_state, goal)
@@ -197,7 +196,12 @@ class DQNAgent:
                                             done, 
                                             goal)
                         
-                        trajectory.append(make_experience(state, action, reward, next_state, done, info))
+                        trajectory.append(make_experience(state, 
+                                                          action, 
+                                                          reward, 
+                                                          next_state, 
+                                                          done, 
+                                                          info))
 
                         rewards.append(reward)
                         state = next_state
@@ -248,7 +252,7 @@ class DQNAgent:
             print('epoch: {}, exploration: {:.2f}%, avg score: {:.3f}'.format(epoch + 1, 100 * eps, avg_reward))
             writer.add_scalar('Avg Score', avg_reward, epoch)
 
-            if abs(avg_reward) <= 0.005:
+            if abs(avg_reward) <= 0.0002:
                 print('\nRunning evaluation...')
 
                 mean_score = self.eval_episode(env, use_target=False, render=True)
