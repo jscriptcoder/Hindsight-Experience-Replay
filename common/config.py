@@ -1,18 +1,16 @@
 class Config:
     buffer_size = int(1e6)
-    batch_size = 64
+    batch_size = 128
     gamma = 0.99
-    tau = 0.95
-    epochs = 1000
-    cycles = 1
-    episodes = 1
+    tau = 1e-3
+    episodes = 2000
     optims = 50
     max_steps = 1000
-    future_k = 1
+    future_k = 4
     state_size = None
     action_size = None
     goal_size = None
-    lr = 5e-4
+    lr = 1e-3
     eps_start = 1.0
     eps_end = 0.1
     eps_decay = 0.995

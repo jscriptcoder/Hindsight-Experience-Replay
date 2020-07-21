@@ -5,6 +5,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+from collections import deque
 from common.replay_buffer import ReplayBuffer
 from common.utils import make_experience, from_experience, seed_all
 from common.device import device
@@ -33,19 +34,17 @@ class DQNAgent:
         self.optimizer = optim.Adam(self.qn_local.parameters(), lr=lr)
         self.memory = ReplayBuffer(buffer_size, batch_size)
         
-        self.state_scaler = StandarScaler(state_size)
-        self.goal_scaler = StandarScaler(goal_size)
+        self.scaler = StandarScaler(net_state_size)
+        self.losses = deque(maxlen=100)
 
     def process_input(self, state, goal=None):
         use_her = self.config.use_her
 
-        state = self.state_scaler.scale(state)
-
-        if use_her:
-            goal = self.goal_scaler.scale(goal)
-            return np.concatenate([state, goal])
-        else:
-            return state
+        if use_her and goal is not None:
+            state =  np.concatenate([state, goal])
+            state = self.scaler.scale(state)
+        
+        return state
 
     def act(self, state, goal, eps=0., use_target=False):
         action_size = self.config.action_size
@@ -79,6 +78,7 @@ class DQNAgent:
          next_states, 
          dones) = from_experience(experiences)
         
+        tau = self.config.tau
         gamma = self.config.gamma
         use_her = self.config.use_her
         use_double = self.config.use_double
@@ -103,12 +103,14 @@ class DQNAgent:
         else:
             loss = F.mse_loss(q_expected, q_targets)
         
+        self.losses.append(loss.item())
+
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        
-        return loss.item()
 
+        self.soft_update(tau)
+    
     def soft_update(self, tau):
         for target_param, local_param in zip(self.qn_target.parameters(), 
                                              self.qn_local.parameters()):
@@ -117,8 +119,9 @@ class DQNAgent:
     def add_experience(self, state, action, reward, next_state, done, goal=None):
         use_her = self.config.use_her
 
-        self.state_scaler.update(state)
-        if use_her: self.goal_scaler.update(goal)
+        if use_her and goal is not None:
+            self.scaler.update(np.concatenate([state, goal]))
+            self.scaler.update(np.concatenate([next_state, goal]))
 
         state_ = self.process_input(state, goal)
         next_state_ = self.process_input(next_state, goal)
@@ -162,101 +165,89 @@ class DQNAgent:
         eps = self.config.eps_start
         eps_end = self.config.eps_end
         eps_decay = self.config.eps_decay
-        epochs = self.config.epochs
-        cycles = self.config.cycles
         episodes = self.config.episodes
         max_steps = self.config.max_steps
         use_her = self.config.use_her
         future_k = self.config.future_k
-        optims = self.config.optims
         env_solved = self.config.env_solved
         times_solved = self.config.times_solved
 
         writer = SummaryWriter(comment='_LunarLander')
 
-        for epoch in range(epochs):
+        for episode in range(episodes):
 
-            rewards = []
+            total_reward = 0
+            success = False
+            trajectory = []
+            state, goal = env.reset()
+
+            for step in range(max_steps):
+                action = self.act(state, goal, eps)
+                next_state, reward, done, info = env.step(action)
+
+                self.add_experience(state, 
+                                    action, 
+                                    reward, 
+                                    next_state, 
+                                    done, 
+                                    goal)
+                
+                self.optimize()
+
+                trajectory.append(make_experience(state, 
+                                                  action, 
+                                                  reward, 
+                                                  next_state, 
+                                                  done, 
+                                                  info))
+
+                total_reward += reward
+                state = next_state
+                
+                if done: 
+                    success = info['success']
+                    break
             
-            for cycle in range(cycles):
+            if use_her:
+                steps_taken = len(trajectory)
+                
+                if future_k == 1:
+                    # final stragegy
+                    goals_idx = [steps_taken-1]
+                else: 
+                    # future strategy
+                    goals_idx = np.random.choice(steps_taken, future_k, replace=False)
 
-                for episode in range(episodes):
+                for goal_i in goals_idx:
+                    new_goal = trajectory[goal_i].info['achieved_goal']
 
-                    trajectory = []
-                    state, goal = env.reset()
+                    for t in range(goal_i+1):
+                        state, action, reward, next_state, done, info = trajectory[t]
 
-                    for step in range(max_steps):
-                        action = self.act(state, goal, eps)
-                        next_state, reward, done, info = env.step(action)
+                        achieved_goal = trajectory[t].info['achieved_goal']
+                        reward = env.compute_reward(achieved_goal, new_goal)
 
                         self.add_experience(state, 
                                             action, 
                                             reward, 
                                             next_state, 
                                             done, 
-                                            goal)
+                                            new_goal)
                         
-                        trajectory.append(make_experience(state, 
-                                                          action, 
-                                                          reward, 
-                                                          next_state, 
-                                                          done, 
-                                                          info))
-
-                        rewards.append(reward)
-                        state = next_state
-                        
-                        if done: break
-                    # End Steps
-                    
-                    if use_her:
-                        steps_taken = len(trajectory)
-                        
-                        if future_k == 1:
-                            # final stragegy
-                            goals_idx = [steps_taken-1]
-                        else: 
-                            # future strategy
-                            goals_idx = np.random.choice(steps_taken, future_k, replace=False)
-
-                        for goal_i in goals_idx:
-                            new_goal = trajectory[goal_i].info['achieved_goal']
-
-                            for t in range(goal_i+1):
-                                state, action, reward, next_state, done, info = trajectory[t]
-
-                                achieved_goal = trajectory[t].info['achieved_goal']
-                                reward, done = env.compute_reward(achieved_goal, new_goal)
-
-                                self.add_experience(state, 
-                                                    action, 
-                                                    reward, 
-                                                    next_state, 
-                                                    done, 
-                                                    new_goal)
-
-                                if done: break
-                            # End HER
-                        # End Goals
-                # End Episode
-
-                for _ in range(optims):
-                    self.optimize()
-                # End Optimization
-
-                self.soft_update(tau)
-            # End Cycle
+                        self.optimize()
+                # End Goals
             
-            avg_reward = np.mean(rewards)
+            avg_loss = np.mean(self.losses)
 
-            print('epoch: {}, exploration: {:.2f}%, avg score: {:.3f}'.format(epoch + 1, 100 * eps, avg_reward))
-            writer.add_scalar('Avg Score', avg_reward, epoch)
+            print('episode: {}, exploration: {:.2f}%, total reward: {:.3f}, avg Loss: {:.3f}'.format(episode + 1, 100 * eps, total_reward, avg_loss))
+            writer.add_scalar('Episode Reward', total_reward, episode)
+            writer.add_scalar('Avg Loss', avg_loss, episode)
 
-            if abs(avg_reward) <= 0.0002:
+            if success:
                 print('\nRunning evaluation...')
 
                 mean_score = self.eval_episode(env, use_target=False, render=True)
-                writer.add_scalar('Evaluation Score', mean_score, epoch)
+                writer.add_scalar('Evaluation Score', mean_score, episode)
 
                 if mean_score >= env_solved:
                     print('Environment solved {} times consecutively!'.format(times_solved))
@@ -266,4 +257,3 @@ class DQNAgent:
                     print('No success. Avg score: {:.3f}'.format(mean_score))
             
             eps = max(eps_end, eps_decay*eps)
-        # End Epoch
