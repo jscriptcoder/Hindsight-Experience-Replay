@@ -42,7 +42,7 @@ class DQNAgent:
 
         if use_her and goal is not None:
             state =  np.concatenate([state, goal])
-            state = self.scaler.scale(state)
+            # state = self.scaler.scale(state)
         
         return state
 
