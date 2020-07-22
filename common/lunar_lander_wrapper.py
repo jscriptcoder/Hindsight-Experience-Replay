@@ -30,10 +30,10 @@ class LunarLanderWrapper:
 
         if self.with_goal:
             achieved_goal = next_state[:-2].copy()
-            reward = self.compute_reward(achieved_goal, self.goal)
+            reward, done = self.compute_reward(achieved_goal, self.goal)
 
             info['achieved_goal'] = achieved_goal
-            info['success'] = (reward == 1)
+            info['success'] = done
         else:
             reward = env_reward
             info['success'] = (reward == 100)
@@ -49,13 +49,14 @@ class LunarLanderWrapper:
     @staticmethod
     def compute_reward(state, goal, eps=0.1, dense=False):
         d = np.linalg.norm(state - goal, axis=-1) # euclidean distance
+        done = d < eps
 
         if dense:
             reward = -d
         else:
             # sparse reward:
-            #   +1 => success
+            #    0 => success
             #   -1 => fail
-            reward = 1 if d < eps else -1
+            reward = 0 if done else -1
 
-        return reward
+        return reward, done

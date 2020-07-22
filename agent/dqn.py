@@ -225,7 +225,7 @@ class DQNAgent:
                         state, action, reward, next_state, done, info = trajectory[t]
 
                         achieved_goal = trajectory[t].info['achieved_goal']
-                        reward = env.compute_reward(achieved_goal, new_goal)
+                        reward, done = env.compute_reward(achieved_goal, new_goal)
 
                         self.add_experience(state, 
                                             action, 
