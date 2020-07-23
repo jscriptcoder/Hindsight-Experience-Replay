@@ -34,19 +34,29 @@ make_experience = namedtuple('Experience',
 
 def from_experience(experiences):
     states = torch.from_numpy(
-            np.vstack([e.state for e in experiences if e is not None])).float().to(device)
+        np.vstack([e.state for e in experiences if e is not None])).float().to(device)
 
     actions = torch.from_numpy(
-            np.vstack([e.action for e in experiences if e is not None])).long().to(device)
+        np.vstack([e.action for e in experiences if e is not None])).long().to(device)
 
     rewards = torch.from_numpy(
-            np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
+        np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
 
     next_states = torch.from_numpy(
-            np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
+        np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
 
     dones = torch.from_numpy(
-            np.vstack([e.done for e in experiences if e is not None])\
-            .astype(np.uint8)).to(device)
+        np.vstack([e.done for e in experiences if e is not None])\
+        .astype(np.uint8)).to(device)
     
     return states, actions, rewards, next_states, dones
+
+def sample_goals_idx(steps_taken, future_k):
+    if future_k == 1:
+        # final stragegy
+        goals_idx = [steps_taken-1]
+    else: 
+        # future strategy
+        goals_idx = np.random.choice(steps_taken, future_k, replace=False)
+    
+    return goals_idx

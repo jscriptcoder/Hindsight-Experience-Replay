@@ -4,7 +4,6 @@ class Config:
     gamma = 0.99
     tau = 1e-3
     episodes = 2000
-    optims = 50
     max_steps = 1000
     future_k = 4
     state_size = None
@@ -14,8 +13,7 @@ class Config:
     eps_start = 1.0
     eps_end = 0.1
     eps_decay = 0.995
-    env_solved = 200
-    times_solved = 100
+    eval_every = 10
     use_her = True
     use_double = False
     use_huber_loss = False

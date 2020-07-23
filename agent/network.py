@@ -5,20 +5,20 @@ class DuelingQNetwork(nn.Module):
         super().__init__()
         
         self.features = nn.Sequential(
-            nn.Linear(state_size, 64),
+            nn.Linear(state_size, 128),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(128, 128),
         )
         
         self.advantage = nn.Sequential(
-            nn.Linear(64, 64),
+            nn.Linear(128, 64),
             nn.ReLU(),
             nn.Linear(64, action_size),
             
         )
         
         self.value = nn.Sequential(
-            nn.Linear(64, 64),
+            nn.Linear(128, 64),
             nn.ReLU(),
             nn.Linear(64, 1),
         )

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 from common.replay_buffer import ReplayBuffer
-from common.utils import make_experience, from_experience, seed_all
+from common.utils import make_experience, from_experience, seed_all, sample_goals_idx
 from common.device import device
 from common.scaler import StandarScaler, MinMaxScaler
 from agent.network import DuelingQNetwork
@@ -135,28 +135,24 @@ class DQNAgent:
         self.memory.add(experience)
 
     def eval_episode(self, env, use_target=False, render=False):
-        times_solved = self.config.times_solved
         max_steps = self.config.max_steps
 
         total_reward = 0
+        state, goal = env.reset()
+        done = False
         
-        for t in range(times_solved):
-            state, goal = env.reset()
+        for _ in range(max_steps):
             
-            for step in range(max_steps):
-                
-                if render and t == times_solved-1: env.render()
-                
-                action = self.act(state, goal, use_target=use_target)
-                state, reward, done, info = env.step(action)
+            if render: env.render()
+            
+            action = self.act(state, goal, use_target=use_target)
+            state, reward, done, info = env.step(action)
 
-                total_reward += info['env_reward']
-    
-                if done: break
-            
-            if render: env.close()
+            total_reward += reward
+        
+        if render: env.close()
                 
-        return total_reward / times_solved
+        return total_reward
     
     def train(self, env):
         print('Training on {}'.format(device))
@@ -169,19 +165,19 @@ class DQNAgent:
         max_steps = self.config.max_steps
         use_her = self.config.use_her
         future_k = self.config.future_k
-        env_solved = self.config.env_solved
-        times_solved = self.config.times_solved
+        eval_every = self.config.eval_every
 
         writer = SummaryWriter(comment='_LunarLander')
+
+        best_eval_score = -np.inf
 
         for episode in range(episodes):
 
             total_reward = 0
-            success = False
             trajectory = []
             state, goal = env.reset()
 
-            for step in range(max_steps):
+            for _ in range(max_steps):
                 action = self.act(state, goal, eps)
                 next_state, reward, done, info = env.step(action)
 
@@ -205,18 +201,12 @@ class DQNAgent:
                 state = next_state
                 
                 if done: 
-                    success = info['success']
                     break
             
             if use_her:
                 steps_taken = len(trajectory)
                 
-                if future_k == 1:
-                    # final stragegy
-                    goals_idx = [steps_taken-1]
-                else: 
-                    # future strategy
-                    goals_idx = np.random.choice(steps_taken, future_k, replace=False)
+                goals_idx = sample_goals_idx(steps_taken, future_k)
 
                 for goal_i in goals_idx:
                     new_goal = trajectory[goal_i].info['achieved_goal']
@@ -243,17 +233,17 @@ class DQNAgent:
             writer.add_scalar('Episode Reward', total_reward, episode)
             writer.add_scalar('Avg Loss', avg_loss, episode)
 
-            if success:
+            # if success:
+            if (episode+1) % eval_every == 0:
                 print('\nRunning evaluation...')
 
-                mean_score = self.eval_episode(env, use_target=False, render=True)
-                writer.add_scalar('Evaluation Score', mean_score, episode)
+                score = self.eval_episode(env, use_target=False, render=False)
 
-                if mean_score >= env_solved:
-                    print('Environment solved {} times consecutively!'.format(times_solved))
-                    print('Avg score: {:.3f}'.format(mean_score))
-                    break
-                else:
-                    print('No success. Avg score: {:.3f}'.format(mean_score))
-            
+                print('eval score: {:.3f}\n'.format(score))
+                writer.add_scalar('Evaluation Score', score, episode)
+
+                if score > best_eval_score:
+                    best_eval_score = score
+                    torch.save(self.qn_local.state_dict(), 'best_weights.pth')
+                
             eps = max(eps_end, eps_decay*eps)
