@@ -94,7 +94,7 @@ class DQNAgent:
 
         if use_her:
             clip_return = 1 / (1 - gamma)
-            q_targets = torch.clamp(q_targets, -clip_return, 0)
+            q_targets = torch.clamp(q_targets, 0., clip_return)
 
         q_expected = self.qn_local(states).gather(-1, actions)
 
@@ -174,6 +174,7 @@ class DQNAgent:
         for episode in range(episodes):
 
             total_reward = 0
+            goal_reached = 0
             trajectory = []
             state, goal = env.reset()
 
@@ -198,6 +199,7 @@ class DQNAgent:
                                                   info))
 
                 total_reward += reward
+                goal_reached += 1 if info['success'] else 0
                 state = next_state
                 
                 if done: 
@@ -212,16 +214,16 @@ class DQNAgent:
                     new_goal = trajectory[goal_i].info['achieved_goal']
 
                     for t in range(goal_i+1):
-                        state, action, reward, next_state, done, info = trajectory[t]
+                        state, action, _, next_state, _, info = trajectory[t]
 
                         achieved_goal = trajectory[t].info['achieved_goal']
-                        reward, done = env.compute_reward(achieved_goal, new_goal)
+                        reward, _ = env.compute_reward(achieved_goal, new_goal)
 
                         self.add_experience(state, 
                                             action, 
                                             reward, 
                                             next_state, 
-                                            done, 
+                                            False, 
                                             new_goal)
                         
                         self.optimize()
@@ -229,7 +231,7 @@ class DQNAgent:
             
             avg_loss = np.mean(self.losses)
 
-            print('episode: {}, exploration: {:.2f}%, total reward: {:.3f}, avg Loss: {:.3f}'.format(episode + 1, 100 * eps, total_reward, avg_loss))
+            print('episode: {}, exploration: {:.2f}%, total reward: {}, avg Loss: {:.3f}'.format(episode + 1, 100 * eps, total_reward, avg_loss))
             writer.add_scalar('Episode Reward', total_reward, episode)
             writer.add_scalar('Avg Loss', avg_loss, episode)
 
@@ -239,7 +241,7 @@ class DQNAgent:
 
                 score = self.eval_episode(env, use_target=False, render=False)
 
-                print('eval score: {:.3f}\n'.format(score))
+                print('goal: {}, eval score: {:.2f}\n'.format(env.goal, score))
                 writer.add_scalar('Evaluation Score', score, episode)
 
                 if score > best_eval_score:

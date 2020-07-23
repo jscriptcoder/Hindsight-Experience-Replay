@@ -1,41 +1,44 @@
 import numpy as np
 
 class LunarLanderWrapper:
-    """Turns LunarLander into a goal-conditioned environment"""
+    """Turns LunarLander into a goal-conditioned environment
+        state attributes:
+            [0] horizontal coordinate
+            [1] vertical coordinate
+            [2] horizontal speed
+            [3] vertical speed
+            [4] angle
+            [5] angular speed
+            [6] 1 if first leg has contact, else 0
+            [7] 1 if second leg has contact, else 0
+    """
 
     def __init__(self, gym_env, with_goal=True):
         self.with_goal = with_goal
 
         self.env = gym_env
+        self.reset_goal()
+    
+    def reset_goal(self):
+        x = np.random.uniform(-1., 1.)
+        y = np.random.uniform(0.2, 1.2)
 
-        # state/goal attributes:
-        #   [0] horizontal coordinate
-        #   [1] vertical coordinate
-        #   [2] horizontal speed
-        #   [3] vertical speed
-        #   [4] angle
-        #   [5] angular speed
-        #   [6] 1 if first leg has contact, else 0
-        #   [7] 1 if second leg has contact, else 0
-        # self.goal = np.array([0., 0., 0., 0., 0., 0., 1., 1.])
-        self.goal = np.array([0., 0., 0., 0., 0., 0.])
+        self.goal = np.array([x, y, 0., 0., 0., 0.])
+        return self.goal.copy()
 
     def reset(self):
-        return self.env.reset(), self.goal.copy()
+        return self.env.reset(), self.reset_goal()
 
     def step(self, action):
-        next_state, env_reward, env_done, info = self.env.step(action)
+        next_state, env_reward, done, info = self.env.step(action)
 
-        info = {
-            'env_reward': env_reward,
-            'env_done': env_done,
-        }
+        info = { 'env_reward': env_reward }
 
         if self.with_goal:
             achieved_goal = next_state[:-2].copy()
-            reward, done = self.compute_reward(achieved_goal, self.goal)
+            reward, success = self.compute_reward(achieved_goal, self.goal)
 
-            info['success'] = done
+            info['success'] = success
             info['achieved_goal'] = achieved_goal
         else:
             info['success'] = (env_reward == 100)
@@ -50,7 +53,7 @@ class LunarLanderWrapper:
         self.env.close()
 
     @staticmethod
-    def compute_reward(state, goal, eps=0.05, dense=False):
+    def compute_reward(state, goal, eps=0.1, dense=False):
         d = np.linalg.norm(state - goal, axis=-1) # euclidean distance
         success = d < eps
 
@@ -58,8 +61,8 @@ class LunarLanderWrapper:
             reward = -d
         else:
             # sparse reward:
-            #    1 => success
-            #   -1 => fail
-            reward = 1. if success else -1.
+            #   1 => success
+            #   0 => fail
+            reward = 1. if success else 0.
 
         return reward, success
