@@ -20,7 +20,7 @@ class LunarLanderWrapper:
         self.reset_goal()
     
     def reset_goal(self):
-        x = np.random.uniform(-1., 1.)
+        x = np.random.uniform(-0.5, 0.5)
         y = np.random.uniform(0.2, 1.2)
 
         self.goal = np.array([x, y, 0., 0., 0., 0.])

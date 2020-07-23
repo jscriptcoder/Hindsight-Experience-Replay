@@ -42,7 +42,7 @@ class DQNAgent:
 
         if use_her and goal is not None:
             state =  np.concatenate([state, goal])
-            # state = self.scaler.scale(state)
+            state = self.scaler.scale(state)
         
         return state
 
@@ -174,7 +174,6 @@ class DQNAgent:
         for episode in range(episodes):
 
             total_reward = 0
-            goal_reached = 0
             trajectory = []
             state, goal = env.reset()
 
@@ -199,7 +198,6 @@ class DQNAgent:
                                                   info))
 
                 total_reward += reward
-                goal_reached += 1 if info['success'] else 0
                 state = next_state
                 
                 if done: 
