@@ -13,8 +13,9 @@ class LunarLanderWrapper:
         [7] 1 if second leg has contact, else 0
     """
 
-    def __init__(self, gym_env, with_goal=True, dense_reward=False):
+    def __init__(self, gym_env, with_goal=True, dist_tolerance=0.05, dense_reward=False):
         self.with_goal = with_goal
+        self.dist_tolerance = dist_tolerance
         self.dense_reward = dense_reward
 
         self.env = gym_env
@@ -22,7 +23,7 @@ class LunarLanderWrapper:
     
     def reset_goal(self):
         x = np.random.uniform(-0.5, 0.5)
-        y = np.random.uniform(0.2, 1.2)
+        y = np.random.uniform(0.2, 0.8)
 
         self.goal = np.array([x, y, 0., 0., 0., 0.])
         return self.goal.copy()
@@ -37,10 +38,14 @@ class LunarLanderWrapper:
 
         if self.with_goal:
             achieved_goal = next_state[:-2].copy()
-            reward, done = self.compute_reward(achieved_goal, self.goal, dense=self.dense_reward)
+            reward, success = self.compute_reward(achieved_goal, 
+                                               self.goal, 
+                                               eps=self.dist_tolerance,
+                                               dense=self.dense_reward)
 
-            info['success'] = done
+            info['success'] = success
             info['achieved_goal'] = achieved_goal
+            done = success or env_done
         else:
             info['success'] = (env_reward == 100)
             reward = env_reward

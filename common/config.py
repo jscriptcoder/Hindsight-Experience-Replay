@@ -15,6 +15,7 @@ class Config:
     eps_start = 0.2
     eps_end = 0.1
     eps_decay = 1.
+    dist_tolerance = 0.05
     dense_reward = False
     use_her = True
     use_double = False

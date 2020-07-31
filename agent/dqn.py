@@ -179,10 +179,10 @@ class DQNAgent:
         eps_decay = self.config.eps_decay
         episodes = self.config.episodes
         max_steps = self.config.max_steps
+        dist_tolerance = self.config.dist_tolerance
         dense_reward = self.config.dense_reward
         use_her = self.config.use_her
         future_k = self.config.future_k
-        optims = self.config.optims
 
         writer = SummaryWriter(comment='_LunarLander')
 
@@ -229,7 +229,10 @@ class DQNAgent:
                     additional_goals = sample_achieved_goals(trajectory, t, future_k)
 
                     for additional_goal in additional_goals:
-                        reward, done = env.compute_reward(achieved_goal, additional_goal, dense=dense_reward)
+                        reward, done = env.compute_reward(achieved_goal, 
+                                                          additional_goal, 
+                                                          eps=dist_tolerance,
+                                                          dense=dense_reward)
                         self.step(state, 
                                   action, 
                                   reward, 

@@ -22,22 +22,26 @@ config.buffer_size = int(1e5)
 config.batch_size = 64
 config.gamma = 0.99
 config.tau = 1e-3
-config.update_every = 4
-config.use_double = False
+config.update_every = 1
+config.use_double = True
 config.use_huber_loss = False
 config.lr = 5e-4
 config.eps_start = 0.2
 config.eps_decay = 0.999
 config.eps_end = 0.1
-config.use_her = False
+config.use_her = True
 config.future_k = 4
-config.dense_reward = False
+config.dist_tolerance = 0.1
+config.dense_reward = True
 config.times_eval = 10
 config.solved_rate = 0.9
 
 seed_all(0)
 
-env = LunarLanderWrapper(gym_env, config.use_her, config.dense_reward)
+env = LunarLanderWrapper(gym_env, 
+                         with_goal=config.use_her, 
+                         dist_tolerance=config.dist_tolerance,
+                         dense_reward=config.dense_reward)
 
 agent = DQNAgent(config)
 
