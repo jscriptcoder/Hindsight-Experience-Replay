@@ -107,7 +107,9 @@ class DQNAgent:
 
         if use_her:
             clip_return = 1 / (1 - gamma)
-            q_targets = torch.clamp(q_targets, -clip_return, 0.)
+            # q_targets = torch.clamp(q_targets, -clip_return, 0.)
+            # q_targets = torch.clamp(q_targets, 0., clip_return)
+            q_targets = torch.clamp(q_targets, -clip_return, clip_return)
 
         q_expected = self.qn_local(states).gather(-1, actions)
 
@@ -186,7 +188,7 @@ class DQNAgent:
 
         writer = SummaryWriter(comment='_LunarLander')
 
-        best_eval_score = -np.inf
+        best_success_rate = 0
 
         for episode in range(episodes):
 
@@ -251,15 +253,12 @@ class DQNAgent:
 
                 score, success_rate = self.eval_episode(env, use_target=False)
 
-                if use_her:
-                    print('goal: {}, '.format(env.goal), end='')
-
                 print('eval score: {:.2f}, success rate: {:.2f} \n'.format(score, success_rate))
                 writer.add_scalar('Evaluation Score', score, episode)
                 writer.add_scalar('Success Rate', success_rate, episode)
 
-                if score > best_eval_score:
-                    best_eval_score = score
+                if best_success_rate < success_rate:
+                    best_success_rate = success_rate
                     torch.save(self.qn_local.state_dict(), 'best_weights.pth')
             
             eps = max(eps_end, eps_decay*eps)

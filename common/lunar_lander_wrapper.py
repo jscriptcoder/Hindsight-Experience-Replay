@@ -39,9 +39,9 @@ class LunarLanderWrapper:
         if self.with_goal:
             achieved_goal = next_state[:-2].copy()
             reward, success = self.compute_reward(achieved_goal, 
-                                               self.goal, 
-                                               eps=self.dist_tolerance,
-                                               dense=self.dense_reward)
+                                                  self.goal, 
+                                                  eps=self.dist_tolerance, 
+                                                  dense=self.dense_reward)
 
             info['success'] = success
             info['achieved_goal'] = achieved_goal
@@ -65,11 +65,11 @@ class LunarLanderWrapper:
         success = d < eps
 
         if dense:
-            reward = -d
+            reward = 1. if success else -d
         else:
             # sparse reward:
             #    0 => success
             #   -1 => fail
-            reward = 0. if success else -1.
+            reward = 1. if success else -1.
 
         return reward, success
