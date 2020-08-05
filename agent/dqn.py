@@ -235,11 +235,12 @@ class DQNAgent:
                                                           additional_goal, 
                                                           eps=dist_tolerance,
                                                           dense=dense_reward)
+
                         self.step(state, 
                                   action, 
                                   reward, 
                                   next_state, 
-                                  done, 
+                                  done,
                                   additional_goal)
             
             avg_loss = np.mean(self.losses)

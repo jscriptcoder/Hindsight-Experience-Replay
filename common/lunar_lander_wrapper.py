@@ -22,8 +22,8 @@ class LunarLanderWrapper:
         self.reset_goal()
     
     def reset_goal(self):
-        x = np.random.uniform(-0.5, 0.5)
-        y = np.random.uniform(0.2, 0.8)
+        x = np.random.uniform(-1., 1.)
+        y = np.random.uniform(0., 1.4)
 
         self.goal = np.array([x, y, 0., 0., 0., 0.])
         return self.goal.copy()
@@ -65,11 +65,11 @@ class LunarLanderWrapper:
         success = d < eps
 
         if dense:
-            reward = 1. if success else -d
+            reward = 0. if success else -d
         else:
             # sparse reward:
             #    0 => success
             #   -1 => fail
-            reward = 1. if success else -1.
+            reward = 0. if success else -1.
 
         return reward, success
