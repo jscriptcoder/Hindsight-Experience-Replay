@@ -32,9 +32,9 @@ class LunarLanderWrapper:
         return self.env.reset(), self.reset_goal()
 
     def step(self, action):
-        next_state, env_reward, env_done, info = self.env.step(action)
+        next_state, env_reward, done, info = self.env.step(action)
 
-        info = { 'env_reward': env_reward, 'env_done': env_done }
+        info = { 'env_reward': env_reward }
 
         if self.with_goal:
             achieved_goal = next_state[:-2].copy()
@@ -45,11 +45,9 @@ class LunarLanderWrapper:
 
             info['success'] = success
             info['achieved_goal'] = achieved_goal
-            done = success or env_done
         else:
             info['success'] = (env_reward == 100)
             reward = env_reward
-            done = env_done
         
         return next_state, reward, done, info
 
@@ -65,11 +63,11 @@ class LunarLanderWrapper:
         success = d < eps
 
         if dense:
-            reward = 0. if success else -d
+            reward = 1. if success else -d
         else:
             # sparse reward:
-            #    0 => success
+            #    1 => success
             #   -1 => fail
-            reward = 0. if success else -1.
+            reward = 1. if success else -1.
 
         return reward, success

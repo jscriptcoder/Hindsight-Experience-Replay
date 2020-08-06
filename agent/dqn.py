@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 from common.replay_buffer import ReplayBuffer
-from common.utils import make_experience, from_experience, seed_all, sample_achieved_goals
+from common.utils import make_experience, from_experience, seed_all, sample_achieved_goals_idx
 from common.device import device
 from common.scaler import StandarScaler, MinMaxScaler
 from agent.network import DuelingQNetwork
@@ -154,24 +154,20 @@ class DQNAgent:
         times_eval = self.config.times_eval
         success_rate = self.config.success_rate
         max_steps = self.config.max_steps
-
+        
         total_reward = 0
-        success = 0
 
         for _ in range(times_eval):
             state, goal = env.reset()
+            done = False
 
-            for _ in range(max_steps):
+            while not done:
                 action = self.act(state, goal, use_target=use_target)
                 state, reward, done, info = env.step(action)
 
                 total_reward += reward
-
-                if done:
-                    success += 1 if info['success'] else 0
-                    break
-                
-        return total_reward/times_eval, success/times_eval
+            
+        return total_reward/times_eval
     
     def train(self, env):
         print('Training on {}'.format(device))
@@ -188,12 +184,13 @@ class DQNAgent:
 
         writer = SummaryWriter(comment='_LunarLander')
 
-        best_success_rate = 0
+        most_reached = 0
+        best_score = -np.inf
 
         for episode in range(episodes):
 
             total_reward = 0
-            success = False
+            target_reached = 0
             trajectory = []
             state, goal = env.reset()
 
@@ -215,51 +212,61 @@ class DQNAgent:
                                                   info))
 
                 total_reward += reward
+                target_reached += 1 if info['success'] else 0
                 state = next_state
                 
-                if done: 
-                    success = info['success']
-                    break
+                if done: break
             
             if use_her:
                 steps_taken = len(trajectory)
-                
-                for t in range(steps_taken):
-                    state, action, _, next_state, _, info = copy.deepcopy(trajectory[t])
-                    achieved_goal = info['achieved_goal']
 
-                    additional_goals = sample_achieved_goals(trajectory, t, future_k)
+                goals_idx = sample_achieved_goals_idx(steps_taken, future_k)
 
-                    for additional_goal in additional_goals:
-                        reward, done = env.compute_reward(achieved_goal, 
-                                                          additional_goal, 
-                                                          eps=dist_tolerance,
+                for goal_i in goals_idx:
+                    new_goal = trajectory[goal_i].info['achieved_goal']
+
+                    # simulating trajectories
+                    for t in range(goal_i+1):
+                        state, action, reward, next_state, done, info = trajectory[t]
+
+                        achieved_goal = trajectory[t].info['achieved_goal']
+                        reward, _ = env.compute_reward(achieved_goal, 
+                                                          new_goal, 
+                                                          eps=dist_tolerance, 
                                                           dense=dense_reward)
+
+                        self.add_experience(state, 
+                                            action, 
+                                            reward, 
+                                            next_state, 
+                                            False, 
+                                            new_goal)
 
                         self.step(state, 
                                   action, 
                                   reward, 
                                   next_state, 
-                                  done,
-                                  additional_goal)
+                                  False,
+                                  new_goal)
             
             avg_loss = np.mean(self.losses)
 
-            print('episode: {}, exploration: {:.2f}%, total reward: {:.2f}, avg Loss: {:.3f}'.format(episode + 1, 100 * eps, total_reward, avg_loss))
+            print('episode: {}, exploration: {:.2f}%, target reached: {}, total reward: {:.2f}, avg Loss: {:.3f}'.format(episode + 1, 100 * eps, target_reached, total_reward, avg_loss))
+            writer.add_scalar('Target Reached', target_reached, episode)
             writer.add_scalar('Episode Reward', total_reward, episode)
             writer.add_scalar('Avg Loss', avg_loss, episode)
-
-            if success:
+            
+            if target_reached > most_reached:
+                most_reached = target_reached
                 print('\nRunning evaluation...')
 
-                score, success_rate = self.eval_episode(env, use_target=False)
+                score = self.eval_episode(env, use_target=False)
 
-                print('eval score: {:.2f}, success rate: {:.2f} \n'.format(score, success_rate))
+                print('eval score: {:.2f}'.format(score))
                 writer.add_scalar('Evaluation Score', score, episode)
-                writer.add_scalar('Success Rate', success_rate, episode)
 
-                if best_success_rate < success_rate:
-                    best_success_rate = success_rate
+                if score > best_score:
+                    best_score = score
                     torch.save(self.qn_local.state_dict(), 'best_weights.pth')
             
             eps = max(eps_end, eps_decay*eps)

@@ -26,13 +26,13 @@ config.update_every = 1
 config.use_double = True
 config.use_huber_loss = False
 config.lr = 5e-4
-config.eps_start = 1.
-config.eps_decay = 0.999
+config.eps_start = 0.2
+config.eps_decay = 1.
 config.eps_end = 0.1
 config.use_her = True
-config.future_k = 4
-config.dist_tolerance = 0.1
-config.dense_reward = True
+config.future_k = 50
+config.dist_tolerance = 0.08
+config.dense_reward = False
 config.times_eval = 100
 
 seed_all(0)
