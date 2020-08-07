@@ -30,9 +30,9 @@ config.eps_start = 0.2
 config.eps_decay = 1.
 config.eps_end = 0.1
 config.use_her = True
-config.future_k = 50
+config.future_k = 8
 config.dist_tolerance = 0.08
-config.dense_reward = False
+config.dense_reward = True
 config.times_eval = 100
 
 seed_all(0)

@@ -51,13 +51,21 @@ def from_experience(experiences):
     
     return states, actions, rewards, next_states, dones
 
-def sample_achieved_goals_idx(steps_taken, future_k):
+def sample_achieved_goals(transitions, t, future_k):
     if future_k == 1:
-        # final stragegy
-        goals_idx = [steps_taken-1]
-    else: 
-        size = min(steps_taken, future_k)
-        # future strategy
-        goals_idx = np.random.choice(steps_taken, size, replace=False)
+        # 'final' strategy
+        goals = [transitions[-1].info['achieved_goal']]
+    else:
+        # 'future' strategy
+        steps_taken = len(transitions)
+        k = min(future_k, steps_taken-1 - t)
+
+        if k > 0:
+            future_transitions = transitions[t+1:]
+            future_achieved_goals = [trans.info['achieved_goal'] for trans in future_transitions]
+            goals = random.sample(future_achieved_goals, k=k)
+        else:
+            # we're in the last step. No future goals to achieve from here
+            goals = []
     
-    return goals_idx
+    return goals

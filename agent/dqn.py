@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 from common.replay_buffer import ReplayBuffer
-from common.utils import make_experience, from_experience, seed_all, sample_achieved_goals_idx
+from common.utils import make_experience, from_experience, seed_all, sample_achieved_goals
 from common.device import device
 from common.scaler import StandarScaler, MinMaxScaler
 from agent.network import DuelingQNetwork
@@ -219,35 +219,25 @@ class DQNAgent:
             
             if use_her:
                 steps_taken = len(trajectory)
+                
+                for t in range(steps_taken):
+                    state, action, _, next_state, _, info = copy.deepcopy(trajectory[t])
+                    achieved_goal = info['achieved_goal']
 
-                goals_idx = sample_achieved_goals_idx(steps_taken, future_k)
+                    additional_goals = sample_achieved_goals(trajectory, t, future_k)
 
-                for goal_i in goals_idx:
-                    new_goal = trajectory[goal_i].info['achieved_goal']
-
-                    # simulating trajectories
-                    for t in range(goal_i+1):
-                        state, action, reward, next_state, done, info = trajectory[t]
-
-                        achieved_goal = trajectory[t].info['achieved_goal']
+                    for additional_goal in additional_goals:
                         reward, _ = env.compute_reward(achieved_goal, 
-                                                          new_goal, 
-                                                          eps=dist_tolerance, 
-                                                          dense=dense_reward)
-
-                        self.add_experience(state, 
-                                            action, 
-                                            reward, 
-                                            next_state, 
-                                            False, 
-                                            new_goal)
+                                                       additional_goal, 
+                                                       eps=dist_tolerance, 
+                                                       dense=dense_reward)
 
                         self.step(state, 
                                   action, 
                                   reward, 
                                   next_state, 
                                   False,
-                                  new_goal)
+                                  additional_goal)
             
             avg_loss = np.mean(self.losses)
 
