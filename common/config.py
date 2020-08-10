@@ -21,4 +21,4 @@ class Config:
     use_double = False
     use_huber_loss = False
     times_eval = 100
-    success_rate = 1.
+    eval_every = 100

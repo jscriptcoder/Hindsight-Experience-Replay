@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 from common.replay_buffer import ReplayBuffer
-from common.utils import make_experience, from_experience, seed_all, sample_goals_idx
+from common.utils import make_experience, from_experience, seed_all, sample_transitions
 from common.device import device
 from agent.network import DuelingQNetwork
 
@@ -114,7 +114,8 @@ class DQNAgent:
 
     def soft_update(self, tau):
         for target_param, local_param in zip(
-            self.qn_target.parameters(), self.qn_local.parameters()
+            self.qn_target.parameters(), 
+            self.qn_local.parameters()
         ):
             target_param.data.copy_(tau * local_param + (1.0 - tau) * target_param)
 
@@ -130,7 +131,6 @@ class DQNAgent:
     def eval_episode(self, env, use_target=False):
 
         times_eval = self.config.times_eval
-        success_rate = self.config.success_rate
         max_steps = self.config.max_steps
 
         total_reward = 0
@@ -159,10 +159,11 @@ class DQNAgent:
         dense_reward = self.config.dense_reward
         use_her = self.config.use_her
         future_k = self.config.future_k
+        eval_every = self.config.eval_every
 
         writer = SummaryWriter(comment="_LunarLander")
 
-        most_reached = 0
+        most_reached = 1
         best_score = -np.inf
 
         for episode in range(episodes):
@@ -195,29 +196,27 @@ class DQNAgent:
 
             if use_her:
                 steps_taken = len(trajectory)
+                
+                # replay transitions
+                for t in range(steps_taken):
+                    state, action, _, next_state, _, info = copy.deepcopy(trajectory[t])
+                    achieved_goal = env.to_goal(next_state)
 
-                goals_idx = sample_goals_idx(steps_taken, future_k)
+                    selected_transitions = sample_transitions(trajectory, t, future_k)
 
-                for goal_i in goals_idx:
-                    new_goal = trajectory[goal_i].info["achieved_goal"]
-
-                    # simulates new trajectory:
-                    #   t0 --> t1 --> ... --> new_goal
-                    for t in range(goal_i + 1):
-                        state, action, _, next_state, _, info = copy.deepcopy(trajectory[t])
-
-                        achieved_goal = info["achieved_goal"]
+                    for transition in selected_transitions:
+                        additional_goal = env.to_goal(transition.state)
                         reward, _ = env.compute_reward(achieved_goal, 
-                                                       new_goal, 
+                                                       additional_goal, 
                                                        eps=dist_tolerance, 
                                                        dense=dense_reward)
-                        
+
                         self.step(state, 
                                   action, 
                                   reward, 
                                   next_state, 
-                                  False, # in the simulation we're not done yet
-                                  new_goal)
+                                  False,
+                                  additional_goal)
 
             avg_loss = np.mean(self.losses)
 
@@ -235,8 +234,7 @@ class DQNAgent:
             writer.add_scalar("Episode Reward", total_reward, episode)
             writer.add_scalar("Avg Loss", avg_loss, episode)
 
-            if target_reached > most_reached:
-                most_reached = target_reached
+            if (episode+1) % eval_every == 0:
                 print("\nRunning evaluation...")
 
                 score = self.eval_episode(env, use_target=False)
