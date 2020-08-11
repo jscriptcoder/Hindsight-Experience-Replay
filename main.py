@@ -31,8 +31,8 @@ config.eps_decay = 0.9995
 config.eps_end = 0.1
 config.use_her = True
 config.future_k = 8
-config.dist_tolerance = 0.05
-config.dense_reward = False
+config.dist_tolerance = 0.1
+config.dense_reward = True
 config.times_eval = 100
 config.eval_every = 20
 
