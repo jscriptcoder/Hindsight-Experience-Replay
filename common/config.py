@@ -6,7 +6,6 @@ class Config:
     episodes = 2000
     max_steps = 1000
     future_k = 4
-    optims = 50
     state_size = None
     action_size = None
     goal_size = None
