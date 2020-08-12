@@ -1,12 +1,12 @@
 import gym
 import time
 import gym.spaces
-import envs.rocket_lander_gym
+import rocket_lander_gym
 
 PRINT_DEBUG_MSG = True
 
 # RocketLander-v0 | LunarLanderContinuous-v2 | MountainCar-v0 | CartPole-v0 | ReacherPyBulletEnv-v0
-env = gym.make('RocketLander-v0')
+env = gym.make('LunarLander-v2')
 
 env.reset()
 
