@@ -36,9 +36,11 @@ We demonstrate our approach on the task of manipulating objects with a robotic a
 1. [Hindsight Experience Replay | Two Minute Papers #192](https://www.youtube.com/watch?v=Dvd1jQe3pq0)
 2. [Overcoming sparse rewards in Deep RL: Curiosity, hindsight & auxiliary tasks](https://www.youtube.com/watch?v=0Ey02HT_1Ho)
 3. [Hindsight Experience Replay](https://www.youtube.com/watch?v=Dz_HuzgMxzo)
+4. [Hindsight Experience Replay by Olivier Sigaud](https://www.youtube.com/watch?v=77xkqEAsHFI)
 
 #### Repos
 
 1. [2D Gridworld navigation using RL with Hindsight Experience Replay](https://github.com/orrivlin/Navigation-HER)
 2. [Pytorch implementation of Hindsight Experience Replay (HER)](https://github.com/TianhongDai/hindsight-experience-replay)
 3. [Reproducing results from the Hindsight Experience Replay paper in PyTorch](https://github.com/viraat/hindsight-experience-replay)
+4. [Hindsight Experience Replay by Alex Hermansson](https://github.com/AlexHermansson/hindsight-experience-replay)
