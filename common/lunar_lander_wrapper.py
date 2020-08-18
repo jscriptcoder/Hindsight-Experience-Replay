@@ -64,7 +64,7 @@ class LunarLanderWrapper:
         if dense:
             reward = 1. if success else -d
         else:
-            # sparse reward:
+            # Sparse reward:
             #    1 => success
             #   -1 => fail
             reward = 1. if success else -1.

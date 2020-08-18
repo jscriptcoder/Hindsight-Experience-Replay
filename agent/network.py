@@ -1,6 +1,10 @@
 import torch.nn as nn
 
 class DuelingQNetwork(nn.Module):
+    """Dueling Network Architecture
+    See: https://arxiv.org/abs/1511.06581
+    """
+
     def __init__(self, state_size, action_size):
         super().__init__()
         

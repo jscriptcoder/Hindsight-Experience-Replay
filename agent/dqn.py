@@ -58,6 +58,7 @@ class DQNAgent:
             action_values = model(state_input)
         model.train()
 
+        # ε-greedy
         if random.random() > eps:
             return np.argmax(action_values.cpu().numpy())
         else:
@@ -86,6 +87,7 @@ class DQNAgent:
         use_huber_loss = self.config.use_huber_loss
 
         if use_double:
+            # Double DQN: https://arxiv.org/abs/1509.06461
             best_action = self.qn_local(next_states).argmax(-1, keepdim=True)
             max_q = self.qn_target(next_states).detach().gather(-1, best_action)
         else:
@@ -93,6 +95,8 @@ class DQNAgent:
 
         q_targets = rewards + (gamma * max_q * (1 - dones))
 
+        # Clipping targets as suggested in the paper: 
+        # See A Experiment details / Training procedure
         if use_her:
             clip_return = 1 / (1 - gamma)
             q_targets = torch.clamp(q_targets, -clip_return, clip_return)
@@ -166,6 +170,7 @@ class DQNAgent:
         most_reached = 1
         best_score = -np.inf
 
+        ### DQN algorithm ###
         for episode in range(episodes):
 
             total_reward = 0
@@ -174,10 +179,16 @@ class DQNAgent:
             state, goal = env.reset()
 
             for _ in range(max_steps):
+                # With probability eps select a random action, otherwise select max
                 action = self.act(state, goal, eps)
+
+                # Execute action and observe next state and reward
                 next_state, reward, done, info = env.step(action)
+
+                # Store transition and perform optimization step
                 self.step(state, action, reward, next_state, done, goal)
 
+                # Store for potential use in HER
                 trajectory.append(
                     make_experience(state, 
                                     action, 
@@ -193,30 +204,41 @@ class DQNAgent:
 
                 if done:
                     break
-
+            
+            ### HER does her magic here ###
             if use_her:
                 steps_taken = len(trajectory)
                 
-                # replay transitions
+                # Replay transitions with different goals
                 for t in range(steps_taken):
                     state, action, _, next_state, _, info = copy.deepcopy(trajectory[t])
+                    
+                    # Convert next state into a goal
                     achieved_goal = env.to_goal(next_state)
 
+                    # Will sample final or future random transitions depending on 'future_k'
+                    #   future_k = 1 => final strategy
+                    #   future_k > 1 => future strategy
                     selected_transitions = sample_transitions(trajectory, t, future_k)
 
+                    # Loop over virtual goals. These are achieved goals along the episode
                     for transition in selected_transitions:
                         additional_goal = env.to_goal(transition.state)
+
+                        # Recompute reward
                         reward, _ = env.compute_reward(achieved_goal, 
                                                        additional_goal, 
                                                        eps=dist_tolerance, 
                                                        dense=dense_reward)
 
+                        # Store in buffer, with a new goal, and perform optimization step
                         self.step(state, 
                                   action, 
                                   reward, 
                                   next_state, 
-                                  False,
+                                  False, # we're not done even if goal is reached (keep hovering)
                                   additional_goal)
+            ### End HER ###
 
             avg_loss = np.mean(self.losses)
 
@@ -247,4 +269,6 @@ class DQNAgent:
                     torch.save(self.qn_local.state_dict(), "best_weights.pth")
             
             eps = max(eps_end, eps_decay * eps)
+
+        ### End DQN ###
 
