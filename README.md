@@ -4,7 +4,7 @@ Controlling a Spaceship using Hindsight Experience Replay (a.k.a HER)
 
 This research is based on the paper [Hindsight Experience Replay](https://arxiv.org/abs/1707.01495) submitted on Jul 5th, 2017 by OpenAI Researchers
 
-I wrote a [Medium article]() trying to demystify this algorithm, where I describe my journey during the reaserch.
+I wrote a [Medium article](https://medium.com/@jscriptcoder/yet-another-hindsight-experience-replay-backstory-4285c43ff168) trying to demystify this algorithm, where I describe my journey during the reaserch.
 
 ## Abstract
 
