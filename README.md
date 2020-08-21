@@ -2,9 +2,11 @@
 
 Controlling a Spaceship using Hindsight Experience Replay (a.k.a HER)
 
-This research is based on the paper [Hindsight Experience Replay](https://arxiv.org/abs/1707.01495) submitted on Jul 5th, 2017 by OpenAI Researchers
+This research is based on the paper [Hindsight Experience Replay](https://arxiv.org/abs/1707.01495) submitted on Jul 5th, 2017 by OpenAI Researchers.
 
 I wrote a series of [Medium articles](https://medium.com/@jscriptcoder/yet-another-hindsight-experience-replay-backstory-4285c43ff168) trying to demystify this algorithm, where I describe my journey during the reaserch.
+
+I'm using [Deep Q-Network](https://arxiv.org/abs/1312.5602) with [Double DQN](https://arxiv.org/abs/1509.06461) and [Dueling Network Architecture](https://arxiv.org/abs/1511.06581).
 
 ## Abstract
 
