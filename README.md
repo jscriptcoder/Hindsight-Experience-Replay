@@ -46,3 +46,5 @@ We demonstrate our approach on the task of manipulating objects with a robotic a
 2. [Pytorch implementation of Hindsight Experience Replay (HER)](https://github.com/TianhongDai/hindsight-experience-replay)
 3. [Reproducing results from the Hindsight Experience Replay paper in PyTorch](https://github.com/viraat/hindsight-experience-replay)
 4. [Hindsight Experience Replay by Alex Hermansson](https://github.com/AlexHermansson/hindsight-experience-replay)
+
+<!-- sort 1 -->
